@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign up — Fleet Priority</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="center-shell">
+  <div style="width:100%;max-width:380px;">
+    <div class="brand-row"><div class="brand-mark">FP</div><h1>Fleet Priority</h1></div>
+    <div class="card">
+      <h2>Create your account</h2>
+      <p class="sub">Start managing your fleet in minutes.</p>
+      <div class="error-box" id="errorBox"></div>
+      <form id="signupForm">
+        <div class="field"><label>Email</label><input type="email" id="email" required autocomplete="email"></div>
+        <div class="field"><label>Password</label><input type="password" id="password" required minlength="8" autocomplete="new-password"></div>
+        <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Sign up</button>
+      </form>
+      <p class="hint">Already have an account? <a href="/login.html">Log in</a></p>
+    </div>
+  </div>
+</div>
+<script>
+const errorBox = document.getElementById('errorBox');
+function showError(msg){ errorBox.textContent = msg; errorBox.classList.add('show'); }
+
+document.getElementById('signupForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  errorBox.classList.remove('show');
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.disabled = true; submitBtn.textContent = 'Creating account…';
+  try{
+    const res = await fetch('/api/auth/signup', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value,
+      }),
+    });
+    const data = await res.json();
+    if(!res.ok){ showError(data.error || 'Could not create account.'); return; }
+    window.location.href = '/pricing.html';
+  }catch(err){
+    showError('Something went wrong. Please try again.');
+  }finally{
+    submitBtn.disabled = false; submitBtn.textContent = 'Sign up';
+  }
+});
+</script>
+</body>
+</html>

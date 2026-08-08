@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log in — Fleet Priority</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="center-shell">
+  <div style="width:100%;max-width:380px;">
+    <div class="brand-row"><div class="brand-mark">FP</div><h1>Fleet Priority</h1></div>
+    <div class="card">
+      <h2>Log in</h2>
+      <p class="sub">Welcome back.</p>
+      <div class="error-box" id="errorBox"></div>
+      <form id="loginForm">
+        <div class="field"><label>Email</label><input type="email" id="email" required autocomplete="email"></div>
+        <div class="field"><label>Password</label><input type="password" id="password" required autocomplete="current-password"></div>
+        <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Log in</button>
+      </form>
+      <p class="hint">No account yet? <a href="/signup.html">Sign up</a></p>
+    </div>
+  </div>
+</div>
+<script>
+const errorBox = document.getElementById('errorBox');
+function showError(msg){ errorBox.textContent = msg; errorBox.classList.add('show'); }
+
+document.getElementById('loginForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  errorBox.classList.remove('show');
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.disabled = true; submitBtn.textContent = 'Logging in…';
+  try{
+    const res = await fetch('/api/auth/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value,
+      }),
+    });
+    const data = await res.json();
+    if(!res.ok){ showError(data.error || 'Login failed.'); return; }
+    if(data.user.subscriptionStatus === 'active' || data.user.subscriptionStatus === 'trialing'){
+      window.location.href = '/app.html';
+    }else{
+      window.location.href = '/pricing.html';
+    }
+  }catch(err){
+    showError('Something went wrong. Please try again.');
+  }finally{
+    submitBtn.disabled = false; submitBtn.textContent = 'Log in';
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fleet Priority</title>
+<style>
+  :root{
+    --bg:#0f1420;
+    --panel:#171d2b;
+    --panel-2:#1e2536;
+    --border:#2a3245;
+    --text:#e8ecf4;
+    --text-dim:#8b93a7;
+    --accent:#4f7fff;
+    --accent-dim:#2c3d6b;
+    --green:#3ecf8e;
+    --amber:#f5b94b;
+    --red:#f0665f;
+    --gray:#6b7280;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+  }
+  .app{max-width:1200px;margin:0 auto;padding:28px 24px 60px;}
+
+  /* Topbar (account/billing) */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+    padding:10px 24px;border-bottom:1px solid var(--border);background:var(--panel);
+  }
+  .topbar .who{font-size:13px;color:var(--text-dim);display:flex;align-items:center;gap:8px;}
+  .plan-badge{
+    font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;
+    padding:3px 9px;border-radius:20px;background:rgba(79,127,255,0.15);color:var(--accent);
+  }
+  .activating-note{
+    display:none;background:rgba(245,185,75,0.12);border:1px solid rgba(245,185,75,0.35);
+    color:var(--amber);border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:16px;
+  }
+
+  /* Header */
+  header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:22px;}
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand-mark{
+    width:42px;height:42px;border-radius:10px;
+    background:linear-gradient(135deg,var(--accent),#7aa2ff);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:18px;color:#fff;flex-shrink:0;
+  }
+  .brand h1{margin:0;font-size:22px;letter-spacing:-0.02em;}
+  .brand p{margin:2px 0 0;color:var(--text-dim);font-size:13px;}
+  .btn{
+    border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;
+    cursor:pointer;transition:filter .15s ease,transform .05s ease;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn:disabled{opacity:0.6;cursor:default;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{filter:brightness(1.1);}
+  .btn-secondary{background:var(--panel-2);color:var(--text);border:1px solid var(--border);}
+  .btn-secondary:hover{background:#232b3f;}
+  .btn-danger{background:transparent;color:var(--red);border:1px solid rgba(240,102,95,0.4);}
+  .btn-danger:hover{background:rgba(240,102,95,0.1);}
+  .btn-sm{padding:6px 10px;font-size:12.5px;}
+
+  /* Stats */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px;}
+  .stat{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;}
+  .stat .num{font-size:24px;font-weight:700;letter-spacing:-0.02em;}
+  .stat .label{font-size:12px;color:var(--text-dim);margin-top:2px;}
+  .stat.available .num{color:var(--green);}
+  .stat.rented .num{color:var(--accent);}
+  .stat.maintenance .num{color:var(--amber);}
+  .stat.out .num{color:var(--red);}
+
+  /* Controls */
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;}
+  .search{
+    flex:1;min-width:200px;background:var(--panel);border:1px solid var(--border);
+    border-radius:8px;padding:10px 14px;color:var(--text);font-size:14px;outline:none;
+  }
+  .search::placeholder{color:var(--text-dim);}
+  .search:focus{border-color:var(--accent);}
+  select.filter{
+    background:var(--panel);border:1px solid var(--border);border-radius:8px;
+    padding:10px 12px;color:var(--text);font-size:14px;outline:none;cursor:pointer;
+  }
+
+  /* Grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;}
+  .card{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px;cursor:pointer;transition:border-color .15s ease,transform .05s ease;
+  }
+  .card:hover{border-color:var(--accent-dim);}
+  .card:active{transform:scale(0.99);}
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+  .ymm{font-weight:700;font-size:16px;letter-spacing:-0.01em;}
+  .tag{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;
+    background:var(--panel-2);border:1px solid var(--border);border-radius:6px;
+    padding:3px 8px;color:var(--text-dim);letter-spacing:0.03em;
+  }
+  .badge{
+    font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;
+    padding:3px 9px;border-radius:20px;white-space:nowrap;
+  }
+  .badge-available{background:rgba(62,207,142,0.15);color:var(--green);}
+  .badge-rented{background:rgba(79,127,255,0.15);color:var(--accent);}
+  .badge-maintenance{background:rgba(245,185,75,0.15);color:var(--amber);}
+  .badge-out{background:rgba(240,102,95,0.15);color:var(--red);}
+  .card-row{display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim);padding:4px 0;}
+  .card-row span:last-child{color:var(--text);text-align:right;}
+  .paid-pill{
+    display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:5px;
+  }
+  .paid-yes{background:rgba(62,207,142,0.15);color:var(--green);}
+  .paid-no{background:rgba(245,185,75,0.15);color:var(--amber);}
+  .card-note{
+    margin-top:10px;padding-top:10px;border-top:1px solid var(--border);
+    font-size:12.5px;color:var(--text-dim);line-height:1.4;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .card-photo{
+    width:100%;height:150px;object-fit:cover;border-radius:8px;margin-bottom:12px;
+    display:block;background:var(--panel-2);
+  }
+  .card-photo-placeholder{
+    width:100%;height:150px;border-radius:8px;margin-bottom:12px;
+    display:flex;align-items:center;justify-content:center;font-size:32px;
+    background:linear-gradient(135deg,var(--panel-2),var(--bg));color:var(--text-dim);
+    border:1px dashed var(--border);
+  }
+
+  .empty{
+    text-align:center;padding:60px 20px;color:var(--text-dim);
+    background:var(--panel);border:1px dashed var(--border);border-radius:var(--radius);
+  }
+  .empty .btn{margin-top:14px;}
+
+  /* Modal */
+  .overlay{
+    position:fixed;inset:0;background:rgba(6,9,16,0.7);backdrop-filter:blur(2px);
+    display:none;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow-y:auto;
+  }
+  .overlay.open{display:flex;}
+  .modal{
+    background:var(--panel);border:1px solid var(--border);border-radius:14px;
+    width:100%;max-width:640px;padding:26px;margin-bottom:40px;
+  }
+  .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+  .modal-header h2{margin:0;font-size:18px;}
+  .close-x{background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;line-height:1;padding:4px;}
+  .close-x:hover{color:var(--text);}
+
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .form-grid .full{grid-column:1/-1;}
+  .field label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:5px;font-weight:600;}
+  .field input,.field select,.field textarea{
+    width:100%;background:var(--panel-2);border:1px solid var(--border);border-radius:7px;
+    padding:9px 11px;color:var(--text);font-size:13.5px;font-family:inherit;outline:none;
+  }
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);}
+  .field textarea{resize:vertical;min-height:60px;}
+  .section-label{
+    grid-column:1/-1;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;
+    color:var(--accent);font-weight:700;margin-top:8px;padding-top:12px;border-top:1px solid var(--border);
+  }
+  .section-label:first-child{margin-top:0;padding-top:0;border-top:none;}
+  .checkbox-row{display:flex;align-items:center;gap:8px;}
+  .checkbox-row input{width:16px;height:16px;accent-color:var(--accent);}
+  .photo-upload{display:flex;gap:14px;align-items:center;}
+  .photo-preview{
+    width:96px;height:72px;border-radius:8px;object-fit:cover;background:var(--panel-2);
+    border:1px solid var(--border);flex-shrink:0;
+  }
+  .photo-preview-placeholder{
+    width:96px;height:72px;border-radius:8px;background:var(--panel-2);border:1px dashed var(--border);
+    display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:22px;flex-shrink:0;
+  }
+  .photo-actions{display:flex;flex-direction:column;gap:8px;}
+  .photo-actions input[type=file]{font-size:12.5px;color:var(--text-dim);max-width:220px;}
+  .modal-actions{display:flex;justify-content:space-between;gap:10px;margin-top:22px;padding-top:16px;border-top:1px solid var(--border);}
+  .modal-actions .right{display:flex;gap:8px;}
+
+  footer{margin-top:30px;text-align:center;color:var(--text-dim);font-size:12px;}
+
+  /* Assistant panel */
+  .asst-overlay{
+    position:fixed;inset:0;background:rgba(6,9,16,0.5);display:none;z-index:60;
+  }
+  .asst-overlay.open{display:block;}
+  .asst-panel{
+    position:fixed;top:0;right:0;height:100%;width:100%;max-width:420px;
+    background:var(--panel);border-left:1px solid var(--border);
+    display:flex;flex-direction:column;box-shadow:-8px 0 30px rgba(0,0,0,0.35);
+    transform:translateX(100%);transition:transform .2s ease;z-index:61;
+  }
+  .asst-overlay.open .asst-panel{transform:translateX(0);}
+  .asst-header{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:16px 18px;border-bottom:1px solid var(--border);flex-shrink:0;
+  }
+  .asst-header h3{margin:0;font-size:15px;}
+  .asst-header p{margin:2px 0 0;font-size:12px;color:var(--text-dim);}
+  .asst-body{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px;}
+  .asst-msg{max-width:88%;padding:10px 13px;border-radius:12px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;}
+  .asst-msg.bot{background:var(--panel-2);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:3px;}
+  .asst-msg.user{background:var(--accent);color:#fff;align-self:flex-end;border-bottom-right-radius:3px;}
+  .asst-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 18px 12px;flex-shrink:0;}
+  .asst-chip{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text-dim);
+    border-radius:20px;padding:6px 12px;font-size:12px;cursor:pointer;
+  }
+  .asst-chip:hover{border-color:var(--accent-dim);color:var(--text);}
+  .asst-inputrow{display:flex;gap:8px;padding:14px 18px;border-top:1px solid var(--border);flex-shrink:0;}
+  .asst-inputrow input{
+    flex:1;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;
+    padding:10px 12px;color:var(--text);font-size:13.5px;outline:none;
+  }
+  .asst-inputrow input:focus{border-color:var(--accent);}
+
+  /* Onboarding: welcome modal + tour */
+  .welcome-icon{font-size:34px;margin-bottom:10px;}
+  .welcome-modal{max-width:420px;text-align:center;}
+  .welcome-modal p{color:var(--text-dim);font-size:14px;line-height:1.6;margin:0 0 22px;}
+  .welcome-actions{display:flex;flex-direction:column;gap:10px;}
+  .tour-spotlight{
+    position:fixed;z-index:120;pointer-events:none;border-radius:10px;
+    box-shadow:0 0 0 9999px rgba(6,9,16,0.72);transition:all .2s ease;
+  }
+  .tour-tooltip{
+    position:fixed;z-index:121;background:var(--panel);border:1px solid var(--border);
+    border-radius:12px;padding:16px;width:280px;box-shadow:0 12px 30px rgba(0,0,0,0.4);
+  }
+  .tour-tooltip h4{margin:0 0 6px;font-size:14px;}
+  .tour-tooltip p{margin:0 0 14px;font-size:13px;color:var(--text-dim);line-height:1.5;}
+  .tour-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .tour-dots{display:flex;gap:5px;}
+  .tour-dot{width:6px;height:6px;border-radius:50%;background:var(--border);}
+  .tour-dot.active{background:var(--accent);}
+  .tour-actions{display:flex;gap:8px;}
+  .tour-skip{background:none;border:none;color:var(--text-dim);font-size:12.5px;cursor:pointer;padding:6px 4px;}
+  .tour-skip:hover{color:var(--text);}
+  .restart-tour-link{background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;padding:0;margin-left:6px;}
+  .restart-tour-link:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="who">
+    <span id="userEmail">—</span>
+    <span class="plan-badge" id="planBadge">PLAN</span>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button class="btn btn-secondary btn-sm" id="manageBillingBtn">Manage billing</button>
+    <button class="btn btn-secondary btn-sm" id="logoutBtn">Log out</button>
+  </div>
+</div>
+
+<div class="app">
+  <div class="activating-note" id="activatingNote">Finalizing your subscription… this usually takes a few seconds.</div>
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark">FP</div>
+      <div>
+        <h1>Fleet Priority</h1>
+        <p>Rental car fleet notator</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-secondary" id="exportBtn">Export</button>
+      <button class="btn btn-secondary" id="importBtn">Import</button>
+      <input type="file" id="importFile" accept=".json" style="display:none;">
+      <button class="btn btn-secondary" id="assistantBtn">🤖 Assistant</button>
+      <button class="btn btn-primary" id="addBtn">+ Add Vehicle</button>
+    </div>
+  </header>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="controls">
+    <input type="text" class="search" id="searchInput" placeholder="Search by tag, VIN, make, model, or mechanic...">
+    <select class="filter" id="statusFilter">
+      <option value="">All statuses</option>
+      <option value="Available">Available</option>
+      <option value="Rented">Rented</option>
+      <option value="Maintenance">Maintenance</option>
+      <option value="Out of Service">Out of Service</option>
+    </select>
+    <select class="filter" id="sortSelect">
+      <option value="tag">Sort: Tag</option>
+      <option value="mileage">Sort: Mileage (high-low)</option>
+      <option value="year">Sort: Year (new-old)</option>
+      <option value="status">Sort: Status</option>
+    </select>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="emptyState" style="display:none;">
+    <div style="font-size:32px;">🚗</div>
+    <p>No vehicles yet. Add your first car to get started.</p>
+    <button class="btn btn-primary" id="emptyAddBtn">+ Add Vehicle</button>
+  </div>
+
+  <footer>Data is saved to your account and synced across devices.<button type="button" class="restart-tour-link" id="restartTourBtn">Show tour again</button></footer>
+</div>
+
+<!-- Modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">Add Vehicle</h2>
+      <button class="close-x" id="closeModal">✕</button>
+    </div>
+    <form id="carForm">
+      <div class="form-grid">
+
+        <div class="section-label">Vehicle</div>
+        <div class="field"><label>Year</label><input type="text" id="f_year" placeholder="2023" required></div>
+        <div class="field"><label>Make</label><input type="text" id="f_make" placeholder="Toyota" required></div>
+        <div class="field"><label>Model</label><input type="text" id="f_model" placeholder="Camry" required></div>
+        <div class="field"><label>License Tag / Plate</label><input type="text" id="f_tag" placeholder="ABC-1234" required></div>
+        <div class="field"><label>VIN</label><input type="text" id="f_vin" placeholder="1HGCM82633A004352"></div>
+        <div class="field"><label>Status</label>
+          <select id="f_status">
+            <option>Available</option>
+            <option>Rented</option>
+            <option>Maintenance</option>
+            <option>Out of Service</option>
+          </select>
+        </div>
+
+        <div class="section-label">Photo</div>
+        <div class="field full">
+          <div class="photo-upload">
+            <img id="photoPreview" class="photo-preview" style="display:none;" alt="Vehicle photo preview">
+            <div id="photoPlaceholder" class="photo-preview-placeholder">🚗</div>
+            <div class="photo-actions">
+              <input type="file" id="f_image" accept="image/png,image/jpeg,image/webp,image/gif">
+              <button type="button" class="btn btn-danger btn-sm" id="removePhotoBtn" style="display:none;width:fit-content;">Remove photo</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-label">Condition</div>
+        <div class="field"><label>Current Mileage</label><input type="number" id="f_mileage" placeholder="45210" min="0"></div>
+        <div class="field"><label>Tire Type</label><input type="text" id="f_tire" placeholder="All-season, All-terrain, etc."></div>
+        <div class="field full checkbox-row"><input type="checkbox" id="f_paidoff"><label style="margin:0;" for="f_paidoff">Vehicle is paid off</label></div>
+        <div class="field full"><label>Current Car Note (condition, payoff status, issues, etc.)</label><textarea id="f_note" placeholder="e.g. $340/mo remaining on loan, minor bumper scuff, due for oil change"></textarea></div>
+
+        <div class="section-label">Mechanic</div>
+        <div class="field"><label>Preferred Mechanic / Shop</label><input type="text" id="f_mechName" placeholder="Joe's Auto Care"></div>
+        <div class="field"><label>Mechanic Phone</label><input type="text" id="f_mechPhone" placeholder="(555) 123-4567"></div>
+
+        <div class="section-label">Rental &amp; Insurance</div>
+        <div class="field"><label>Current Renter</label><input type="text" id="f_renter" placeholder="Leave blank if not rented"></div>
+        <div class="field"><label>Insurance Provider</label><input type="text" id="f_insProvider" placeholder="Progressive"></div>
+        <div class="field full"><label>Insurance Policy #</label><input type="text" id="f_insPolicy" placeholder="POL-00000000"></div>
+
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-danger" id="deleteBtn" style="display:none;">Delete Vehicle</button>
+        <div class="right">
+          <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveBtn">Save Vehicle</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Assistant -->
+<div class="asst-overlay" id="asstOverlay">
+  <div class="asst-panel">
+    <div class="asst-header">
+      <div>
+        <h3>🤖 Fleet Assistant</h3>
+        <p>Ask about your fleet — no internet or API key needed</p>
+      </div>
+      <button class="close-x" id="asstClose">✕</button>
+    </div>
+    <div class="asst-body" id="asstBody"></div>
+    <div class="asst-chips" id="asstChips"></div>
+    <div class="asst-inputrow">
+      <input type="text" id="asstInput" placeholder="e.g. which cars aren't paid off?">
+      <button class="btn btn-primary btn-sm" id="asstSend">Ask</button>
+    </div>
+  </div>
+</div>
+
+<!-- Onboarding: welcome modal -->
+<div class="overlay" id="welcomeOverlay">
+  <div class="modal welcome-modal">
+    <div class="welcome-icon">🚗</div>
+    <h2 style="margin:0 0 8px;">Welcome to Fleet Priority</h2>
+    <p>Track tags, mileage, payoff status, tires, mechanics, and photos for every car in your fleet, synced to your account. Want a quick look around?</p>
+    <div class="welcome-actions">
+      <button type="button" class="btn btn-primary" id="welcomeStartBtn">Show me around</button>
+      <button type="button" class="btn btn-secondary" id="welcomeSkipBtn">Skip, I'll explore on my own</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  let cars = [];
+  let currentUser = null;
+  let editingId = null;
+
+  const grid = document.getElementById('grid');
+  const emptyState = document.getElementById('emptyState');
+  const statsEl = document.getElementById('stats');
+  const searchInput = document.getElementById('searchInput');
+  const statusFilter = document.getElementById('statusFilter');
+  const sortSelect = document.getElementById('sortSelect');
+  const overlay = document.getElementById('overlay');
+  const carForm = document.getElementById('carForm');
+  const modalTitle = document.getElementById('modalTitle');
+  const deleteBtn = document.getElementById('deleteBtn');
+  const saveBtn = document.getElementById('saveBtn');
+  const fImage = document.getElementById('f_image');
+  const photoPreview = document.getElementById('photoPreview');
+  const photoPlaceholder = document.getElementById('photoPlaceholder');
+  const removePhotoBtn = document.getElementById('removePhotoBtn');
+
+  let selectedImageFile = null;
+  let removeImageRequested = false;
+
+  function resetPhotoUI(){
+    selectedImageFile = null;
+    removeImageRequested = false;
+    fImage.value = '';
+    photoPreview.style.display = 'none';
+    photoPreview.src = '';
+    photoPlaceholder.style.display = 'flex';
+    removePhotoBtn.style.display = 'none';
+  }
+  function showPhotoPreview(src){
+    photoPreview.src = src;
+    photoPreview.style.display = 'block';
+    photoPlaceholder.style.display = 'none';
+    removePhotoBtn.style.display = 'inline-block';
+  }
+  function imageUrlFor(c){
+    return `/api/vehicles/${c.id}/image?v=${encodeURIComponent(c.updatedAt || '')}`;
+  }
+
+  fImage.addEventListener('change', ()=>{
+    const file = fImage.files[0];
+    if(!file) return;
+    selectedImageFile = file;
+    removeImageRequested = false;
+    const reader = new FileReader();
+    reader.onload = (e)=> showPhotoPreview(e.target.result);
+    reader.readAsDataURL(file);
+  });
+  removePhotoBtn.addEventListener('click', ()=>{
+    selectedImageFile = null;
+    removeImageRequested = true;
+    fImage.value = '';
+    photoPreview.style.display = 'none';
+    photoPlaceholder.style.display = 'flex';
+    removePhotoBtn.style.display = 'none';
+  });
+
+  /* ---------------- API helper ---------------- */
+  async function api(path, opts){
+    opts = opts || {};
+    const res = await fetch(path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts,
+    });
+    let data = {};
+    try{ data = await res.json(); }catch(e){ /* no body */ }
+    if(!res.ok){
+      const err = new Error(data.error || ('Request failed (' + res.status + ')'));
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  }
+
+  /* ---------------- Auth / subscription gating ---------------- */
+  async function fetchUser(){
+    try{
+      const { user } = await api('/api/auth/me');
+      return user;
+    }catch(e){
+      return null;
+    }
+  }
+
+  function isActive(user){
+    return user && (user.subscriptionStatus === 'active' || user.subscriptionStatus === 'trialing');
+  }
+
+  async function init(){
+    currentUser = await fetchUser();
+    if(!currentUser){
+      window.location.href = '/login.html';
+      return;
+    }
+
+    if(!isActive(currentUser)){
+      const params = new URLSearchParams(window.location.search);
+      if(params.get('checkout') === 'success'){
+        // Webhook can take a moment to land after redirect — poll briefly.
+        document.getElementById('activatingNote').style.display = 'block';
+        for(let i=0;i<6 && !isActive(currentUser);i++){
+          await new Promise(r=>setTimeout(r, 1500));
+          currentUser = await fetchUser();
+        }
+        document.getElementById('activatingNote').style.display = 'none';
+      }
+      if(!isActive(currentUser)){
+        window.location.href = '/pricing.html';
+        return;
+      }
+    }
+
+    document.getElementById('userEmail').textContent = currentUser.email;
+    document.getElementById('planBadge').textContent = (currentUser.plan || 'plan').toUpperCase();
+
+    try{
+      const { vehicles } = await api('/api/vehicles');
+      cars = vehicles;
+    }catch(e){
+      cars = [];
+    }
+    render();
+    initOnboarding();
+  }
+
+  document.getElementById('manageBillingBtn').addEventListener('click', async ()=>{
+    try{
+      const { url } = await api('/api/billing/create-portal-session', { method:'POST' });
+      window.location.href = url;
+    }catch(e){
+      alert(e.message);
+    }
+  });
+  document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+    await api('/api/auth/logout', { method:'POST' });
+    window.location.href = '/login.html';
+  });
+
+  /* ---------------- Rendering ---------------- */
+  function statusClass(status){
+    switch(status){
+      case 'Available': return 'badge-available';
+      case 'Rented': return 'badge-rented';
+      case 'Maintenance': return 'badge-maintenance';
+      case 'Out of Service': return 'badge-out';
+      default: return 'badge-available';
+    }
+  }
+
+  function renderStats(){
+    const total = cars.length;
+    const counts = {Available:0, Rented:0, Maintenance:0, 'Out of Service':0};
+    cars.forEach(c => { if(counts.hasOwnProperty(c.status)) counts[c.status]++; });
+    statsEl.innerHTML = `
+      <div class="stat"><div class="num">${total}</div><div class="label">Total Vehicles</div></div>
+      <div class="stat available"><div class="num">${counts.Available}</div><div class="label">Available</div></div>
+      <div class="stat rented"><div class="num">${counts.Rented}</div><div class="label">Rented</div></div>
+      <div class="stat maintenance"><div class="num">${counts.Maintenance}</div><div class="label">Maintenance</div></div>
+      <div class="stat out"><div class="num">${counts['Out of Service']}</div><div class="label">Out of Service</div></div>
+    `;
+  }
+
+  function getFiltered(){
+    const q = searchInput.value.trim().toLowerCase();
+    const status = statusFilter.value;
+    let list = cars.filter(c=>{
+      if(status && c.status !== status) return false;
+      if(!q) return true;
+      const hay = [c.tag,c.vin,c.make,c.model,c.year,c.mechName,c.renter].join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+    const sortBy = sortSelect.value;
+    list.sort((a,b)=>{
+      if(sortBy==='mileage') return (Number(b.mileage)||0) - (Number(a.mileage)||0);
+      if(sortBy==='year') return (Number(b.year)||0) - (Number(a.year)||0);
+      if(sortBy==='status') return (a.status||'').localeCompare(b.status||'');
+      return (a.tag||'').localeCompare(b.tag||'');
+    });
+    return list;
+  }
+
+  function escapeHtml(str){
+    if(str===undefined || str===null) return '';
+    return String(str).replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  }
+
+  function render(){
+    renderStats();
+    const list = getFiltered();
+    grid.innerHTML = '';
+    if(cars.length === 0){
+      emptyState.style.display = 'block';
+      grid.style.display = 'none';
+      return;
+    }
+    emptyState.style.display = 'none';
+    grid.style.display = 'grid';
+
+    if(list.length === 0){
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1;">No vehicles match your search/filter.</div>';
+      return;
+    }
+
+    list.forEach(c=>{
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        ${c.imagePath
+          ? `<img class="card-photo" src="${imageUrlFor(c)}" alt="${escapeHtml(c.year)} ${escapeHtml(c.make)} ${escapeHtml(c.model)}" loading="lazy">`
+          : `<div class="card-photo-placeholder">🚗</div>`}
+        <div class="card-top">
+          <div>
+            <div class="ymm">${escapeHtml(c.year)} ${escapeHtml(c.make)} ${escapeHtml(c.model)}</div>
+            <div class="tag" style="margin-top:6px;display:inline-block;">${escapeHtml(c.tag)}</div>
+          </div>
+          <span class="badge ${statusClass(c.status)}">${escapeHtml(c.status)}</span>
+        </div>
+        <div class="card-row"><span>Mileage</span><span>${c.mileage ? Number(c.mileage).toLocaleString()+' mi' : '—'}</span></div>
+        <div class="card-row"><span>Tire Type</span><span>${escapeHtml(c.tire) || '—'}</span></div>
+        <div class="card-row"><span>Paid Off</span><span><span class="paid-pill ${c.paidOff ? 'paid-yes':'paid-no'}">${c.paidOff ? 'Paid Off' : 'Financed'}</span></span></div>
+        <div class="card-row"><span>Mechanic</span><span>${escapeHtml(c.mechName) || '—'}</span></div>
+        ${c.renter ? `<div class="card-row"><span>Renter</span><span>${escapeHtml(c.renter)}</span></div>` : ''}
+        ${c.note ? `<div class="card-note">${escapeHtml(c.note)}</div>` : ''}
+      `;
+      card.addEventListener('click', ()=>openModal(c.id));
+      grid.appendChild(card);
+    });
+  }
+
+  function openModal(id){
+    editingId = id || null;
+    carForm.reset();
+    resetPhotoUI();
+    if(id){
+      const c = cars.find(x=>x.id===id);
+      if(!c) return;
+      modalTitle.textContent = 'Edit Vehicle';
+      deleteBtn.style.display = 'inline-block';
+      if(c.imagePath){
+        showPhotoPreview(imageUrlFor(c));
+      }
+      document.getElementById('f_year').value = c.year || '';
+      document.getElementById('f_make').value = c.make || '';
+      document.getElementById('f_model').value = c.model || '';
+      document.getElementById('f_tag').value = c.tag || '';
+      document.getElementById('f_vin').value = c.vin || '';
+      document.getElementById('f_status').value = c.status || 'Available';
+      document.getElementById('f_mileage').value = c.mileage || '';
+      document.getElementById('f_tire').value = c.tire || '';
+      document.getElementById('f_paidoff').checked = !!c.paidOff;
+      document.getElementById('f_note').value = c.note || '';
+      document.getElementById('f_mechName').value = c.mechName || '';
+      document.getElementById('f_mechPhone').value = c.mechPhone || '';
+      document.getElementById('f_renter').value = c.renter || '';
+      document.getElementById('f_insProvider').value = c.insProvider || '';
+      document.getElementById('f_insPolicy').value = c.insPolicy || '';
+    }else{
+      modalTitle.textContent = 'Add Vehicle';
+      deleteBtn.style.display = 'none';
+      document.getElementById('f_status').value = 'Available';
+    }
+    overlay.classList.add('open');
+  }
+  function closeModal(){
+    overlay.classList.remove('open');
+    editingId = null;
+  }
+
+  document.getElementById('addBtn').addEventListener('click', ()=>openModal(null));
+  document.getElementById('emptyAddBtn').addEventListener('click', ()=>openModal(null));
+  document.getElementById('closeModal').addEventListener('click', closeModal);
+  document.getElementById('cancelBtn').addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e)=>{ if(e.target === overlay) closeModal(); });
+
+  carForm.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const data = {
+      year: document.getElementById('f_year').value.trim(),
+      make: document.getElementById('f_make').value.trim(),
+      model: document.getElementById('f_model').value.trim(),
+      tag: document.getElementById('f_tag').value.trim(),
+      vin: document.getElementById('f_vin').value.trim(),
+      status: document.getElementById('f_status').value,
+      mileage: document.getElementById('f_mileage').value,
+      tire: document.getElementById('f_tire').value.trim(),
+      paidOff: document.getElementById('f_paidoff').checked,
+      note: document.getElementById('f_note').value.trim(),
+      mechName: document.getElementById('f_mechName').value.trim(),
+      mechPhone: document.getElementById('f_mechPhone').value.trim(),
+      renter: document.getElementById('f_renter').value.trim(),
+      insProvider: document.getElementById('f_insProvider').value.trim(),
+      insPolicy: document.getElementById('f_insPolicy').value.trim(),
+    };
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+    try{
+      let vehicle;
+      if(editingId){
+        ({ vehicle } = await api(`/api/vehicles/${editingId}`, { method:'PUT', body: JSON.stringify(data) }));
+        const idx = cars.findIndex(c=>c.id===editingId);
+        if(idx>-1) cars[idx] = vehicle;
+      }else{
+        ({ vehicle } = await api('/api/vehicles', { method:'POST', body: JSON.stringify(data) }));
+        cars.push(vehicle);
+      }
+
+      // Photo is uploaded separately (multipart), after the vehicle record exists.
+      if(selectedImageFile || removeImageRequested){
+        saveBtn.textContent = 'Saving photo…';
+        try{
+          let imgRes, imgData;
+          if(selectedImageFile){
+            const fd = new FormData();
+            fd.append('image', selectedImageFile);
+            imgRes = await fetch(`/api/vehicles/${vehicle.id}/image`, { method:'POST', body: fd });
+          }else{
+            imgRes = await fetch(`/api/vehicles/${vehicle.id}/image`, { method:'DELETE' });
+          }
+          imgData = await imgRes.json().catch(()=>({}));
+          if(imgRes.ok && imgData.vehicle){
+            const idx2 = cars.findIndex(c=>c.id===vehicle.id);
+            if(idx2>-1) cars[idx2] = imgData.vehicle;
+          }else if(!imgRes.ok){
+            alert((imgData && imgData.error) || 'Vehicle saved, but the photo could not be saved.');
+          }
+        }catch(imgErr){
+          alert('Vehicle saved, but the photo could not be saved: ' + imgErr.message);
+        }
+      }
+
+      closeModal();
+      render();
+    }catch(err){
+      alert(err.message);
+    }finally{
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Vehicle';
+    }
+  });
+
+  deleteBtn.addEventListener('click', async ()=>{
+    if(!editingId) return;
+    if(!confirm('Delete this vehicle? This cannot be undone.')) return;
+    try{
+      await api(`/api/vehicles/${editingId}`, { method:'DELETE' });
+      cars = cars.filter(c=>c.id!==editingId);
+      closeModal();
+      render();
+    }catch(err){
+      alert(err.message);
+    }
+  });
+
+  searchInput.addEventListener('input', render);
+  statusFilter.addEventListener('change', render);
+  sortSelect.addEventListener('change', render);
+
+  document.getElementById('exportBtn').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(cars, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'fleet-priority-data.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  const importFile = document.getElementById('importFile');
+  document.getElementById('importBtn').addEventListener('click', ()=> importFile.click());
+  importFile.addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async (evt)=>{
+      try{
+        const imported = JSON.parse(evt.target.result);
+        if(!Array.isArray(imported)){
+          alert('Invalid file format.');
+          return;
+        }
+        let success = 0, failed = 0, lastError = '';
+        for(const item of imported){
+          const { id, userId, createdAt, updatedAt, ...payload } = item;
+          try{
+            const { vehicle } = await api('/api/vehicles', { method:'POST', body: JSON.stringify(payload) });
+            cars.push(vehicle);
+            success++;
+          }catch(err){
+            failed++;
+            lastError = err.message;
+          }
+        }
+        render();
+        alert(`Imported ${success} vehicle(s).` + (failed ? ` ${failed} failed (${lastError}).` : ''));
+      }catch(err){
+        alert('Could not read file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    importFile.value = '';
+  });
+
+  /* ---------------- Assistant ---------------- */
+  const asstOverlay = document.getElementById('asstOverlay');
+  const asstBody = document.getElementById('asstBody');
+  const asstChips = document.getElementById('asstChips');
+  const asstInput = document.getElementById('asstInput');
+
+  const SUGGESTIONS = [
+    "Which cars aren't paid off?",
+    "Cars in maintenance",
+    "Highest mileage car",
+    "Total mileage",
+    "Who's the mechanic for tag ABC-1234?",
+    "Cars over 60000 miles",
+    "Available cars",
+    "Tire types in the fleet"
+  ];
+
+  function carLine(c){
+    return `${c.year || '?'} ${c.make || ''} ${c.model || ''} (${c.tag || 'no tag'})`.replace(/\s+/g,' ').trim();
+  }
+  function carDetail(c){
+    return [
+      carLine(c),
+      `Status: ${c.status || '—'}`,
+      `Mileage: ${c.mileage ? Number(c.mileage).toLocaleString()+' mi' : '—'}`,
+      `Tires: ${c.tire || '—'}`,
+      `Paid off: ${c.paidOff ? 'Yes' : 'No'}`,
+      c.note ? `Note: ${c.note}` : null,
+      `Mechanic: ${c.mechName || '—'}${c.mechPhone ? ' ('+c.mechPhone+')' : ''}`,
+      c.renter ? `Renter: ${c.renter}` : null,
+      c.vin ? `VIN: ${c.vin}` : null,
+      (c.insProvider || c.insPolicy) ? `Insurance: ${c.insProvider || ''} ${c.insPolicy ? '#'+c.insPolicy : ''}`.trim() : null,
+    ].filter(Boolean).join('\n');
+  }
+  function parseNum(str){
+    const m = str.replace(/,/g,'').match(/(\d+(\.\d+)?)/);
+    return m ? Number(m[1]) : null;
+  }
+  function listOrCount(list, noun){
+    if(list.length === 0) return `No ${noun} found.`;
+    const head = `${list.length} ${noun}:\n`;
+    const lines = list.slice(0,12).map(c => '• ' + carLine(c) + (c.mileage ? ` — ${Number(c.mileage).toLocaleString()} mi` : ''));
+    const more = list.length > 12 ? `\n…and ${list.length-12} more.` : '';
+    return head + lines.join('\n') + more;
+  }
+
+  function answerQuery(rawQ){
+    const q = rawQ.toLowerCase().trim();
+    if(cars.length === 0){
+      return "Your fleet is empty right now — add a vehicle first and I can help you look things up.";
+    }
+    if(/^(hi|hey|hello)\b/.test(q) || q==='help' || /what can you (do|ask)|examples?/.test(q)){
+      return "I can answer questions about your fleet, like:\n" + SUGGESTIONS.map(s=>'• '+s).join('\n');
+    }
+
+    const tagHit = cars.find(c => c.tag && q.includes(c.tag.toLowerCase()));
+    const vinHit = !tagHit && cars.find(c => c.vin && c.vin.length > 4 && q.includes(c.vin.toLowerCase()));
+    const directHit = tagHit || vinHit;
+    if(directHit && /mechanic/.test(q)){
+      return directHit.mechName
+        ? `Mechanic for ${carLine(directHit)}: ${directHit.mechName}${directHit.mechPhone ? ' — '+directHit.mechPhone : ''}`
+        : `No preferred mechanic saved for ${carLine(directHit)}.`;
+    }
+    if(directHit && /insurance/.test(q)){
+      return (directHit.insProvider || directHit.insPolicy)
+        ? `Insurance for ${carLine(directHit)}: ${directHit.insProvider || '—'}${directHit.insPolicy ? ' (policy #'+directHit.insPolicy+')' : ''}`
+        : `No insurance info saved for ${carLine(directHit)}.`;
+    }
+    if(directHit){
+      return carDetail(directHit);
+    }
+
+    let list = cars.slice();
+    let noun = 'vehicles';
+    if(/not paid off|financed|still (owe|paying)|not paid/.test(q)){
+      list = list.filter(c=>!c.paidOff); noun = 'not paid off';
+    } else if(/paid off|paid-off/.test(q)){
+      list = list.filter(c=>c.paidOff); noun = 'paid off';
+    }
+    if(/\bavailable\b/.test(q)){ list = list.filter(c=>c.status==='Available'); noun = 'available'; }
+    else if(/\brented\b/.test(q)){ list = list.filter(c=>c.status==='Rented'); noun = 'rented'; }
+    else if(/maintenance/.test(q)){ list = list.filter(c=>c.status==='Maintenance'); noun = 'in maintenance'; }
+    else if(/out of service/.test(q)){ list = list.filter(c=>c.status==='Out of Service'); noun = 'out of service'; }
+
+    const overM = q.match(/(over|above|more than|greater than)\s*([\d,]+)/);
+    const underM = q.match(/(under|below|less than)\s*([\d,]+)/);
+    if(overM){
+      const n = parseNum(overM[2]);
+      list = list.filter(c => Number(c.mileage||0) > n);
+      return listOrCount(list, `vehicles over ${n.toLocaleString()} miles`);
+    }
+    if(underM){
+      const n = parseNum(underM[2]);
+      list = list.filter(c => Number(c.mileage||0) < n);
+      return listOrCount(list, `vehicles under ${n.toLocaleString()} miles`);
+    }
+
+    if(/highest mileage|most miles|most mileage/.test(q)){
+      const sorted = list.slice().sort((a,b)=>Number(b.mileage||0)-Number(a.mileage||0));
+      if(sorted.length===0) return "No vehicles match that.";
+      return `Highest mileage: ${carDetail(sorted[0])}`;
+    }
+    if(/lowest mileage|least miles|fewest miles/.test(q)){
+      const sorted = list.slice().sort((a,b)=>Number(a.mileage||0)-Number(b.mileage||0));
+      if(sorted.length===0) return "No vehicles match that.";
+      return `Lowest mileage: ${carDetail(sorted[0])}`;
+    }
+    if(/total mileage/.test(q)){
+      const sum = list.reduce((s,c)=>s+Number(c.mileage||0),0);
+      return `Total mileage across ${list.length} ${noun}: ${sum.toLocaleString()} mi`;
+    }
+    if(/average mileage/.test(q)){
+      const withMiles = list.filter(c=>c.mileage);
+      if(withMiles.length===0) return "No mileage data recorded yet.";
+      const avg = Math.round(withMiles.reduce((s,c)=>s+Number(c.mileage||0),0)/withMiles.length);
+      return `Average mileage across ${withMiles.length} ${noun}: ${avg.toLocaleString()} mi`;
+    }
+
+    if(/how many|count|number of/.test(q)){
+      return `${list.length} ${noun} in your fleet.`;
+    }
+
+    if(/mechanic/.test(q)){
+      const withMech = list.filter(c=>c.mechName);
+      if(withMech.length===0) return "No vehicles have a preferred mechanic saved yet.";
+      const byMech = {};
+      withMech.forEach(c=>{ (byMech[c.mechName] = byMech[c.mechName]||[]).push(c); });
+      return Object.entries(byMech).map(([name, list])=>
+        `${name}: ${list.map(carLine).join(', ')}`
+      ).join('\n');
+    }
+
+    if(/tire/.test(q)){
+      const specificType = q.replace(/.*tire[s]?\b/, '').trim();
+      if(specificType && specificType.length > 2){
+        const matches = list.filter(c => c.tire && c.tire.toLowerCase().includes(specificType));
+        return listOrCount(matches, `vehicles with "${specificType}" tires`);
+      }
+      const types = {};
+      cars.forEach(c=>{ const t = c.tire || 'Unspecified'; types[t] = (types[t]||0)+1; });
+      return Object.entries(types).map(([t,n])=>`${t}: ${n}`).join('\n');
+    }
+
+    if(/insurance/.test(q)){
+      const withIns = list.filter(c=>c.insProvider);
+      if(withIns.length===0) return "No insurance info saved yet.";
+      return withIns.map(c=>`${carLine(c)}: ${c.insProvider}${c.insPolicy ? ' (#'+c.insPolicy+')' : ''}`).join('\n');
+    }
+
+    if(/renter|who has|rented (out|by)/.test(q)){
+      const withRenter = list.filter(c=>c.renter);
+      if(withRenter.length===0) return "No current renters recorded.";
+      return withRenter.map(c=>`${carLine(c)}: ${c.renter}`).join('\n');
+    }
+
+    if(noun !== 'vehicles'){
+      return listOrCount(list, noun);
+    }
+
+    const tokens = q.split(/\s+/).filter(t=>t.length>2);
+    const matches = cars.filter(c=>{
+      const hay = [c.tag,c.vin,c.make,c.model,c.year,c.mechName,c.renter,c.tire,c.note].join(' ').toLowerCase();
+      return tokens.some(t => hay.includes(t));
+    });
+    if(matches.length > 0){
+      return listOrCount(matches, 'matching vehicles');
+    }
+
+    return "I couldn't match that to your fleet data. Try asking things like:\n" + SUGGESTIONS.slice(0,4).map(s=>'• '+s).join('\n');
+  }
+
+  function addAsstMsg(text, who){
+    const div = document.createElement('div');
+    div.className = 'asst-msg ' + who;
+    div.textContent = text;
+    asstBody.appendChild(div);
+    asstBody.scrollTop = asstBody.scrollHeight;
+  }
+
+  function renderChips(){
+    asstChips.innerHTML = '';
+    SUGGESTIONS.slice(0,4).forEach(s=>{
+      const chip = document.createElement('button');
+      chip.className = 'asst-chip';
+      chip.textContent = s;
+      chip.addEventListener('click', ()=>{ asstInput.value = s; sendAsst(); });
+      asstChips.appendChild(chip);
+    });
+  }
+
+  function sendAsst(){
+    const val = asstInput.value.trim();
+    if(!val) return;
+    addAsstMsg(val, 'user');
+    asstInput.value = '';
+    const reply = answerQuery(val);
+    setTimeout(()=> addAsstMsg(reply, 'bot'), 150);
+  }
+
+  document.getElementById('assistantBtn').addEventListener('click', ()=>{
+    asstOverlay.classList.add('open');
+    if(asstBody.children.length === 0){
+      addAsstMsg("Hi! Ask me anything about your fleet — mileage, mechanics, tires, payoff status, and more.", 'bot');
+      renderChips();
+    }
+    asstInput.focus();
+  });
+  document.getElementById('asstClose').addEventListener('click', ()=> asstOverlay.classList.remove('open'));
+  asstOverlay.addEventListener('click', (e)=>{ if(e.target === asstOverlay) asstOverlay.classList.remove('open'); });
+  document.getElementById('asstSend').addEventListener('click', sendAsst);
+  asstInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') sendAsst(); });
+
+  /* ---------------- Onboarding: welcome + guided tour ---------------- */
+  const welcomeOverlay = document.getElementById('welcomeOverlay');
+
+  async function addSampleVehicle(){
+    try{
+      const { vehicle } = await api('/api/vehicles', { method:'POST', body: JSON.stringify({
+        year: '2022', make: 'Honda', model: 'CR-V',
+        tag: 'SAMPLE-1', vin: '',
+        status: 'Available',
+        mileage: '18450',
+        tire: 'All-season',
+        paidOff: false,
+        note: 'This is a sample vehicle so you can see how a card looks. Edit or delete it any time.',
+        mechName: "Joe's Auto Care", mechPhone: '(555) 123-4567',
+        renter: '', insProvider: '', insPolicy: '',
+      })});
+      cars.push(vehicle);
+      render();
+    }catch(e){
+      // Non-fatal — the tour still works without a sample card, it just skips that step.
+    }
+  }
+
+  const TOUR_STEPS = [
+    { selector: '#addBtn', title: 'Add vehicles', text: 'Start here to add a car — year, make, model, tag, mileage, tires, mechanic, and more.' },
+    { selector: '.card', title: 'Vehicle cards', text: 'Click any card to view full details, add a photo, or edit it.' },
+    { selector: '#assistantBtn', title: 'Ask the assistant', text: 'Ask plain-English questions about your fleet — mileage, mechanics, payoff status. Works fully offline, no API key needed.' },
+    { selector: '#exportBtn', title: 'Back up your data', text: 'Export saves your fleet as a file you can keep as a backup or move elsewhere.' },
+    { selector: '#manageBillingBtn', title: 'Manage your plan', text: 'Update payment info, switch plans, or cancel your subscription any time from here.' },
+  ];
+
+  let tourSteps = [];
+  let tourIndex = 0;
+  let tourSpotlight = null;
+  let tourTooltip = null;
+
+  function teardownTour(){
+    if(tourSpotlight){ tourSpotlight.remove(); tourSpotlight = null; }
+    if(tourTooltip){ tourTooltip.remove(); tourTooltip = null; }
+  }
+
+  function positionTourStep(targetEl){
+    const rect = targetEl.getBoundingClientRect();
+    tourSpotlight.style.left = (rect.left - 6) + 'px';
+    tourSpotlight.style.top = (rect.top - 6) + 'px';
+    tourSpotlight.style.width = (rect.width + 12) + 'px';
+    tourSpotlight.style.height = (rect.height + 12) + 'px';
+
+    tourTooltip.style.visibility = 'hidden';
+    tourTooltip.style.left = '0px';
+    tourTooltip.style.top = '0px';
+    requestAnimationFrame(()=>{
+      const tw = tourTooltip.offsetWidth;
+      const th = tourTooltip.offsetHeight;
+      let top = rect.bottom + 14;
+      if(top + th > window.innerHeight - 12){
+        top = rect.top - th - 14;
+      }
+      top = Math.max(12, top);
+      let left = rect.left + rect.width / 2 - tw / 2;
+      left = Math.max(12, Math.min(left, window.innerWidth - tw - 12));
+      tourTooltip.style.left = left + 'px';
+      tourTooltip.style.top = top + 'px';
+      tourTooltip.style.visibility = 'visible';
+    });
+  }
+
+  function renderTourStep(){
+    const step = tourSteps[tourIndex];
+    const targetEl = document.querySelector(step.selector);
+    if(!targetEl){ nextTourStep(); return; }
+    targetEl.scrollIntoView({ block: 'center', behavior: 'auto' });
+
+    if(!tourSpotlight){
+      tourSpotlight = document.createElement('div');
+      tourSpotlight.className = 'tour-spotlight';
+      document.body.appendChild(tourSpotlight);
+    }
+    if(!tourTooltip){
+      tourTooltip = document.createElement('div');
+      tourTooltip.className = 'tour-tooltip';
+      document.body.appendChild(tourTooltip);
+    }
+
+    const isLast = tourIndex === tourSteps.length - 1;
+    tourTooltip.innerHTML = `
+      <h4>${escapeHtml(step.title)}</h4>
+      <p>${escapeHtml(step.text)}</p>
+      <div class="tour-footer">
+        <div class="tour-dots">${tourSteps.map((s,i)=>`<span class="tour-dot ${i===tourIndex?'active':''}"></span>`).join('')}</div>
+        <div class="tour-actions">
+          <button type="button" class="tour-skip" id="tourSkipBtn">Skip</button>
+          <button type="button" class="btn btn-primary btn-sm" id="tourNextBtn">${isLast ? 'Done' : 'Next'}</button>
+        </div>
+      </div>
+    `;
+    requestAnimationFrame(()=> positionTourStep(targetEl));
+
+    document.getElementById('tourSkipBtn').addEventListener('click', endTour);
+    document.getElementById('tourNextBtn').addEventListener('click', nextTourStep);
+  }
+
+  function nextTourStep(){
+    tourIndex++;
+    if(tourIndex >= tourSteps.length){ endTour(); return; }
+    renderTourStep();
+  }
+
+  function endTour(){
+    teardownTour();
+  }
+
+  function startTour(){
+    tourSteps = TOUR_STEPS.filter(s => document.querySelector(s.selector));
+    tourIndex = 0;
+    if(tourSteps.length === 0) return;
+    renderTourStep();
+  }
+
+  function closeWelcome(){
+    welcomeOverlay.classList.remove('open');
+  }
+
+  document.getElementById('welcomeStartBtn').addEventListener('click', async ()=>{
+    closeWelcome();
+    if(cars.length === 0) await addSampleVehicle();
+    setTimeout(startTour, 200);
+  });
+  document.getElementById('welcomeSkipBtn').addEventListener('click', closeWelcome);
+  document.getElementById('restartTourBtn').addEventListener('click', ()=>{
+    endTour();
+    startTour();
+  });
+
+  function onboardedKey(){
+    return `fleetPriorityOnboarded_${currentUser.id}`;
+  }
+
+  function initOnboarding(){
+    const alreadyOnboarded = localStorage.getItem(onboardedKey());
+    localStorage.setItem(onboardedKey(), '1');
+    if(!alreadyOnboarded && cars.length === 0){
+      welcomeOverlay.classList.add('open');
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

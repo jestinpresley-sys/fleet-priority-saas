@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plans — Fleet Priority</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="center-shell">
+  <div class="pricing-wrap">
+    <div class="topbar-shell">
+      <div class="brand-row" style="margin:0;"><div class="brand-mark">FP</div><h1>Fleet Priority</h1></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary btn-sm" id="portalBtn" style="display:none;">Manage billing</button>
+        <button class="btn btn-secondary btn-sm" id="logoutBtn">Log out</button>
+      </div>
+    </div>
+
+    <p style="color:var(--text-dim);margin:0 0 6px;">Choose a plan to activate your account.</p>
+    <div id="cancelNote" class="status-msg" style="display:none;color:var(--amber);">Checkout was canceled — pick a plan below whenever you're ready.</div>
+
+    <div class="plans">
+      <div class="plan-card">
+        <div class="plan-name">Basic</div>
+        <p class="plan-desc">For small fleets getting organized.</p>
+        <ul class="plan-features">
+          <li>Up to 10 vehicles</li>
+          <li>Tag, mileage &amp; payoff tracking</li>
+          <li>Preferred mechanic directory</li>
+          <li>Built-in fleet assistant</li>
+        </ul>
+        <button class="btn btn-primary btn-block" data-plan="basic">Subscribe to Basic</button>
+      </div>
+      <div class="plan-card featured">
+        <div class="plan-name">Pro</div>
+        <p class="plan-desc">For growing rental operations.</p>
+        <ul class="plan-features">
+          <li>Unlimited vehicles</li>
+          <li>Everything in Basic</li>
+          <li>VIN &amp; insurance tracking</li>
+          <li>Priority support</li>
+        </ul>
+        <button class="btn btn-primary btn-block" data-plan="pro">Subscribe to Pro</button>
+      </div>
+    </div>
+    <div class="status-msg" id="statusMsg"></div>
+  </div>
+</div>
+<script>
+async function requireLogin(){
+  const res = await fetch('/api/auth/me');
+  if(!res.ok){ window.location.href = '/login.html'; return null; }
+  const data = await res.json();
+  return data.user;
+}
+
+(async function init(){
+  const user = await requireLogin();
+  if(!user) return;
+  if(user.hasBillingAccount){
+    document.getElementById('portalBtn').style.display = 'inline-block';
+  }
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('checkout') === 'cancel'){
+    document.getElementById('cancelNote').style.display = 'block';
+  }
+})();
+
+document.querySelectorAll('[data-plan]').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    const plan = btn.getAttribute('data-plan');
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Redirecting to checkout…';
+    try{
+      const res = await fetch('/api/billing/create-checkout-session', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ plan }),
+      });
+      const data = await res.json();
+      if(!res.ok || !data.url){
+        document.getElementById('statusMsg').textContent = data.error || 'Could not start checkout.';
+        btn.disabled = false; btn.textContent = originalText;
+        return;
+      }
+      window.location.href = data.url;
+    }catch(err){
+      document.getElementById('statusMsg').textContent = 'Something went wrong. Please try again.';
+      btn.disabled = false; btn.textContent = originalText;
+    }
+  });
+});
+
+document.getElementById('portalBtn').addEventListener('click', async ()=>{
+  const res = await fetch('/api/billing/create-portal-session', { method:'POST' });
+  const data = await res.json();
+  if(data.url) window.location.href = data.url;
+  else document.getElementById('statusMsg').textContent = data.error || 'Could not open billing portal.';
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+  await fetch('/api/auth/logout', { method:'POST' });
+  window.location.href = '/login.html';
+});
+</script>
+</body>
+</html>
