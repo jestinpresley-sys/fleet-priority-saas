@@ -44,13 +44,7 @@ a:hover{text-decoration:underline;}
   padding:24px;
 }
 .brand-row{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:22px;}
-.brand-mark{
-  width:38px;height:38px;border-radius:9px;
-  background:linear-gradient(135deg,var(--accent),#7aa2ff);
-  display:flex;align-items:center;justify-content:center;
-  font-weight:700;font-size:16px;color:#fff;flex-shrink:0;
-}
-.brand-row h1{margin:0;font-size:19px;letter-spacing:-0.02em;}
+.brand-logo{height:28px;width:auto;}
 
 .card{
   background:var(--panel);border:1px solid var(--border);border-radius:14px;

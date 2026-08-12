@@ -7,7 +7,12 @@ const { requireAuth, requireActiveSub } = require('./auth');
 const db = require('./db');
 
 // Vehicle-count ceiling per plan. Adjust to match what you sell in Stripe.
-const PLAN_LIMITS = { basic: 10, pro: Infinity };
+const PLAN_LIMITS = { basic: 10, pro: 50 };
+
+// Fields only Pro accounts may set — matches the "VIN & insurance tracking"
+// perk advertised on the pricing page. Enforced here, not just hidden in the
+// UI, so a Basic account can't set them by calling the API directly.
+const PRO_ONLY_FIELDS = ['vin', 'insProvider', 'insPolicy'];
 
 const FIELDS = [
   'tag', 'vin', 'year', 'make', 'model', 'status', 'mileage', 'tire',
@@ -17,9 +22,10 @@ const FIELDS = [
 // set through the dedicated image upload/delete routes below, never through
 // the generic JSON create/update body.
 
-function pick(body) {
+function pick(body, plan) {
   const out = {};
   FIELDS.forEach((f) => {
+    if (PRO_ONLY_FIELDS.includes(f) && plan !== 'pro') return;
     if (body[f] !== undefined) out[f] = body[f];
   });
   return out;
@@ -73,12 +79,12 @@ router.post('/', (req, res) => {
       error: `Your ${req.user.plan || 'current'} plan allows up to ${limit} vehicles. Upgrade to add more.`,
     });
   }
-  const vehicle = db.createVehicle(req.user.id, pick(req.body || {}));
+  const vehicle = db.createVehicle(req.user.id, pick(req.body || {}, req.user.plan));
   res.status(201).json({ vehicle });
 });
 
 router.put('/:id', (req, res) => {
-  const vehicle = db.updateVehicle(req.user.id, req.params.id, pick(req.body || {}));
+  const vehicle = db.updateVehicle(req.user.id, req.params.id, pick(req.body || {}, req.user.plan));
   if (!vehicle) return res.status(404).json({ error: 'Vehicle not found.' });
   res.json({ vehicle });
 });
@@ -88,7 +94,18 @@ router.delete('/:id', (req, res) => {
   const ok = db.deleteVehicle(req.user.id, req.params.id);
   if (!ok) return res.status(404).json({ error: 'Vehicle not found.' });
   if (existing) removeImageFile(existing.imagePath);
+  db.deleteMaintenanceForVehicle(req.user.id, req.params.id);
   res.json({ ok: true });
+});
+
+/* ---------------- Maintenance history (scoped to one vehicle) ---------------- */
+// Flat, fleet-wide maintenance endpoints live in server/maintenance.js
+// (mounted at /api/maintenance) — this is just a convenience read for
+// populating a single vehicle's history in the edit modal.
+router.get('/:id/maintenance', (req, res) => {
+  const vehicle = db.getVehicle(req.user.id, req.params.id);
+  if (!vehicle) return res.status(404).json({ error: 'Vehicle not found.' });
+  res.json({ records: db.listMaintenanceForVehicle(req.user.id, req.params.id) });
 });
 
 /* ---------------- Photo endpoints ---------------- */

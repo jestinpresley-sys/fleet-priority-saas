@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fleet Overview — Fleet Priority</title>
+<style>
+  :root{
+    --bg:#0f1420;
+    --panel:#171d2b;
+    --panel-2:#1e2536;
+    --border:#2a3245;
+    --text:#e8ecf4;
+    --text-dim:#8b93a7;
+    --accent:#4f7fff;
+    --accent-dim:#2c3d6b;
+    --green:#3ecf8e;
+    --amber:#f5b94b;
+    --red:#f0665f;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+  }
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+    padding:10px 24px;border-bottom:1px solid var(--border);background:var(--panel);
+  }
+  .topbar .who{font-size:13px;color:var(--text-dim);display:flex;align-items:center;gap:8px;}
+  .plan-badge{
+    font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;
+    padding:3px 9px;border-radius:20px;background:rgba(79,127,255,0.15);color:var(--accent);
+  }
+  .btn{
+    border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;
+    cursor:pointer;transition:filter .15s ease,transform .05s ease;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn-secondary{background:var(--panel-2);color:var(--text);border:1px solid var(--border);}
+  .btn-secondary:hover{background:#232b3f;}
+  .btn-sm{padding:6px 10px;font-size:12.5px;}
+
+  .app{max-width:1200px;margin:0 auto;padding:28px 24px 60px;}
+  header{margin-bottom:22px;}
+  header h1{margin:0;font-size:22px;letter-spacing:-0.02em;}
+  header p{margin:4px 0 0;color:var(--text-dim);font-size:13px;}
+
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px;}
+  .stat{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;}
+  .stat .num{font-size:22px;font-weight:700;letter-spacing:-0.02em;}
+  .stat .label{font-size:12px;color:var(--text-dim);margin-top:2px;}
+  .stat.spend .num{color:var(--green);}
+  .stat.oil .num{color:var(--amber);}
+
+  .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+  @media (max-width: 860px){ .charts-grid{grid-template-columns:1fr;} }
+  .chart-card{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px;
+  }
+  .chart-card h3{margin:0 0 4px;font-size:14px;}
+  .chart-card p.sub{margin:0 0 16px;font-size:12px;color:var(--text-dim);}
+  .chart-wrap{position:relative;height:220px;}
+  .chart-empty{
+    height:220px;display:flex;align-items:center;justify-content:center;
+    color:var(--text-dim);font-size:13px;text-align:center;padding:0 20px;
+  }
+
+  .activity-card{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:18px;
+  }
+  .activity-card h3{margin:0 0 14px;font-size:14px;}
+  table.activity{width:100%;border-collapse:collapse;font-size:13px;}
+  table.activity th{
+    text-align:left;color:var(--text-dim);font-weight:600;font-size:11px;text-transform:uppercase;
+    letter-spacing:0.04em;padding:0 10px 8px;border-bottom:1px solid var(--border);
+  }
+  table.activity td{padding:9px 10px;border-bottom:1px solid var(--border);}
+  table.activity tr:last-child td{border-bottom:none;}
+  table.activity .cost{color:var(--green);font-weight:600;text-align:right;}
+  .empty-note{color:var(--text-dim);font-size:13px;padding:20px 0;text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="who">
+    <span id="userEmail">—</span>
+    <span class="plan-badge" id="planBadge">PLAN</span>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <a href="/app.html" class="btn btn-secondary btn-sm" style="text-decoration:none;">← Back to fleet</a>
+    <button class="btn btn-secondary btn-sm" id="logoutBtn">Log out</button>
+  </div>
+</div>
+
+<div class="app">
+  <header>
+    <h1>Fleet overview</h1>
+    <p>Spending trends and totals across your whole fleet.</p>
+  </header>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h3>Spend by service type</h3>
+      <p class="sub">All-time maintenance cost, grouped by category.</p>
+      <div class="chart-wrap" id="spendChartWrap"><canvas id="spendChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Oil change cost trend</h3>
+      <p class="sub">Average oil change cost by month, across the fleet.</p>
+      <div class="chart-wrap" id="oilChartWrap"><canvas id="oilChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="activity-card">
+    <h3>Recent maintenance activity</h3>
+    <div id="activityBody"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<script>
+(function(){
+  async function api(path, opts){
+    opts = opts || {};
+    const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+    let data = {};
+    try{ data = await res.json(); }catch(e){}
+    if(!res.ok){
+      const err = new Error(data.error || ('Request failed (' + res.status + ')'));
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  }
+
+  function escapeHtml(str){
+    if(str===undefined || str===null) return '';
+    return String(str).replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  }
+  function money(n){
+    const num = Number(n) || 0;
+    return '$' + num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+    await api('/api/auth/logout', { method:'POST' });
+    window.location.href = '/login.html';
+  });
+
+  function isActive(user){
+    return user && (user.subscriptionStatus === 'active' || user.subscriptionStatus === 'trialing');
+  }
+
+  function buildSpendByType(records){
+    const totals = {};
+    records.forEach(r=>{
+      const t = r.type || 'Other';
+      totals[t] = (totals[t] || 0) + (Number(r.cost) || 0);
+    });
+    return totals;
+  }
+
+  function buildOilChangeTrend(records){
+    const oil = records.filter(r => r.type === 'Oil Change' && r.date);
+    const byMonth = {};
+    oil.forEach(r=>{
+      const month = r.date.slice(0,7); // 'YYYY-MM'
+      if(!byMonth[month]) byMonth[month] = { sum: 0, count: 0 };
+      byMonth[month].sum += Number(r.cost) || 0;
+      byMonth[month].count += 1;
+    });
+    const months = Object.keys(byMonth).sort();
+    return {
+      labels: months,
+      values: months.map(m => Math.round((byMonth[m].sum / byMonth[m].count) * 100) / 100),
+    };
+  }
+
+  function renderStats(vehicles, records){
+    const totalVehicles = vehicles.length;
+    const totalMileage = vehicles.reduce((s,v)=> s + (Number(v.mileage) || 0), 0);
+    const totalSpend = records.reduce((s,r)=> s + (Number(r.cost) || 0), 0);
+    const oilRecords = records.filter(r => r.type === 'Oil Change');
+    const oilSpend = oilRecords.reduce((s,r)=> s + (Number(r.cost) || 0), 0);
+    const avgOil = oilRecords.length ? oilSpend / oilRecords.length : 0;
+
+    document.getElementById('stats').innerHTML = `
+      <div class="stat"><div class="num">${totalVehicles}</div><div class="label">Total vehicles</div></div>
+      <div class="stat"><div class="num">${totalMileage.toLocaleString()}</div><div class="label">Total fleet mileage</div></div>
+      <div class="stat spend"><div class="num">${money(totalSpend)}</div><div class="label">Total maintenance spend</div></div>
+      <div class="stat oil"><div class="num">${money(oilSpend)}</div><div class="label">Total oil change spend</div></div>
+      <div class="stat oil"><div class="num">${money(avgOil)}</div><div class="label">Avg. cost per oil change</div></div>
+    `;
+  }
+
+  function renderSpendChart(totals){
+    const wrap = document.getElementById('spendChartWrap');
+    const entries = Object.entries(totals).sort((a,b)=> b[1]-a[1]);
+    if(entries.length === 0){
+      wrap.innerHTML = '<div class="chart-empty">No maintenance records yet — log some to see spend by category.</div>';
+      return;
+    }
+    const ctx = document.getElementById('spendChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: entries.map(e=>e[0]),
+        datasets: [{
+          label: 'Spend',
+          data: entries.map(e=> Math.round(e[1]*100)/100),
+          backgroundColor: '#4f7fff',
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#8b93a7' }, grid: { color: '#2a3245' } },
+          y: { ticks: { color: '#8b93a7' }, grid: { color: '#2a3245' }, beginAtZero: true },
+        },
+      },
+    });
+  }
+
+  function renderOilChart(trend){
+    const wrap = document.getElementById('oilChartWrap');
+    if(trend.labels.length === 0){
+      wrap.innerHTML = '<div class="chart-empty">No oil change records yet — log a few to see the cost trend over time.</div>';
+      return;
+    }
+    const ctx = document.getElementById('oilChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: trend.labels,
+        datasets: [{
+          label: 'Avg. oil change cost',
+          data: trend.values,
+          borderColor: '#f5b94b',
+          backgroundColor: 'rgba(245,185,75,0.15)',
+          tension: 0.25,
+          fill: true,
+          pointRadius: 3,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#8b93a7' }, grid: { color: '#2a3245' } },
+          y: { ticks: { color: '#8b93a7' }, grid: { color: '#2a3245' }, beginAtZero: true },
+        },
+      },
+    });
+  }
+
+  function renderActivity(vehicles, records){
+    const body = document.getElementById('activityBody');
+    if(records.length === 0){
+      body.innerHTML = '<p class="empty-note">No maintenance records yet.</p>';
+      return;
+    }
+    const vehicleById = {};
+    vehicles.forEach(v => { vehicleById[v.id] = v; });
+    const sorted = records.slice().sort((a,b)=> (b.date||'').localeCompare(a.date||'')).slice(0,10);
+    const rows = sorted.map(r=>{
+      const v = vehicleById[r.vehicleId];
+      const label = v ? `${escapeHtml(v.year)} ${escapeHtml(v.make)} ${escapeHtml(v.model)}` : 'Unknown vehicle';
+      return `
+        <tr>
+          <td>${escapeHtml(r.date || '—')}</td>
+          <td>${label}</td>
+          <td>${escapeHtml(r.type || 'Other')}</td>
+          <td class="cost">${money(r.cost)}</td>
+        </tr>
+      `;
+    }).join('');
+    body.innerHTML = `
+      <table class="activity">
+        <thead><tr><th>Date</th><th>Vehicle</th><th>Type</th><th style="text-align:right;">Cost</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  async function init(){
+    let user;
+    try{
+      ({ user } = await api('/api/auth/me'));
+    }catch(e){
+      window.location.href = '/login.html';
+      return;
+    }
+    if(!isActive(user)){
+      window.location.href = '/pricing.html';
+      return;
+    }
+    document.getElementById('userEmail').textContent = user.email;
+    document.getElementById('planBadge').textContent = (user.plan || 'plan').toUpperCase();
+
+    let vehicles = [], records = [];
+    try{
+      const [vRes, mRes] = await Promise.all([ api('/api/vehicles'), api('/api/maintenance') ]);
+      vehicles = vRes.vehicles || [];
+      records = mRes.records || [];
+    }catch(e){
+      // leave empty — sections below render their own empty states
+    }
+
+    renderStats(vehicles, records);
+    renderSpendChart(buildSpendByType(records));
+    renderOilChart(buildOilChangeTrend(records));
+    renderActivity(vehicles, records);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

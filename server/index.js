@@ -7,6 +7,7 @@ const cookieParser = require('cookie-parser');
 const { router: authRouter } = require('./auth');
 const { router: billingRouter, webhookHandler } = require('./billing');
 const fleetRouter = require('./fleet');
+const { router: maintenanceRouter } = require('./maintenance');
 
 const REQUIRED_ENV = [
   'JWT_SECRET',
@@ -38,6 +39,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use('/api/auth', authRouter);
 app.use('/api/billing', billingRouter);
 app.use('/api/vehicles', fleetRouter);
+app.use('/api/maintenance', maintenanceRouter);
 
 app.get('/', (req, res) => res.redirect('/login.html'));
 

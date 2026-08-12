@@ -19,13 +19,16 @@ const DB_FILE = path.join(DATA_DIR, 'db.json');
 function ensureDB() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DB_FILE)) {
-    fs.writeFileSync(DB_FILE, JSON.stringify({ users: [], vehicles: [] }, null, 2));
+    fs.writeFileSync(DB_FILE, JSON.stringify({ users: [], vehicles: [], maintenance: [] }, null, 2));
   }
 }
 ensureDB();
 
 function readRaw() {
-  return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+  const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+  // Defensive: older db.json files predate the maintenance log feature.
+  if (!Array.isArray(db.maintenance)) db.maintenance = [];
+  return db;
 }
 
 // Serialize writes so concurrent requests can't clobber each other.
@@ -113,6 +116,50 @@ function deleteVehicle(userId, id) {
   return db.vehicles.length < before;
 }
 
+/* ---------------- Maintenance records ---------------- */
+
+function listMaintenance(userId) {
+  return readRaw().maintenance.filter((m) => m.userId === userId);
+}
+function listMaintenanceForVehicle(userId, vehicleId) {
+  return listMaintenance(userId).filter((m) => m.vehicleId === vehicleId);
+}
+function getMaintenance(userId, id) {
+  return readRaw().maintenance.find((m) => m.id === id && m.userId === userId) || null;
+}
+function createMaintenance(userId, data) {
+  const db = readRaw();
+  const record = {
+    id: crypto.randomUUID(),
+    userId,
+    ...data,
+    createdAt: new Date().toISOString(),
+  };
+  db.maintenance.push(record);
+  writeRaw(db);
+  return record;
+}
+function updateMaintenance(userId, id, patch) {
+  const db = readRaw();
+  const idx = db.maintenance.findIndex((m) => m.id === id && m.userId === userId);
+  if (idx === -1) return null;
+  db.maintenance[idx] = { ...db.maintenance[idx], ...patch };
+  writeRaw(db);
+  return db.maintenance[idx];
+}
+function deleteMaintenance(userId, id) {
+  const db = readRaw();
+  const before = db.maintenance.length;
+  db.maintenance = db.maintenance.filter((m) => !(m.id === id && m.userId === userId));
+  writeRaw(db);
+  return db.maintenance.length < before;
+}
+function deleteMaintenanceForVehicle(userId, vehicleId) {
+  const db = readRaw();
+  db.maintenance = db.maintenance.filter((m) => !(m.vehicleId === vehicleId && m.userId === userId));
+  writeRaw(db);
+}
+
 module.exports = {
   getUserByEmail,
   getUserById,
@@ -125,4 +172,11 @@ module.exports = {
   createVehicle,
   updateVehicle,
   deleteVehicle,
+  listMaintenance,
+  listMaintenanceForVehicle,
+  getMaintenance,
+  createMaintenance,
+  updateMaintenance,
+  deleteMaintenance,
+  deleteMaintenanceForVehicle,
 };

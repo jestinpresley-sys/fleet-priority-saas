@@ -14,9 +14,11 @@ to supply your own Stripe account, environment variables, and hosting. Budget
 - Stripe Checkout for two subscription tiers (Basic / Pro)
 - Stripe Customer Portal for self-serve plan management/cancellation
 - Stripe webhook handling to keep subscription status in sync
-- Per-plan vehicle limits (Basic: 10 vehicles, Pro: unlimited — edit in `server/fleet.js`)
+- Per-plan vehicle limits (Basic: 10 vehicles, Pro: 50 vehicles — edit in `server/fleet.js`)
 - The Fleet Priority UI (cards, search/filter, the offline assistant) wired to a per-account API instead of localStorage
 - Vehicle photos: upload/replace/remove a photo per vehicle (JPG/PNG/WEBP/GIF, 5MB max), shown on the fleet card and in the edit modal. Files live on disk under `data/uploads` and are only ever served back to the vehicle's owner (`GET /api/vehicles/:id/image` checks ownership — it's not a public static folder).
+- Maintenance history: log dated, costed service records (oil change, tires, brakes, etc.) per vehicle from the edit modal.
+- Fleet Overview page (`public/overview.html`, linked from the topbar): total fleet mileage, total/average maintenance spend, a spend-by-service-type chart, an oil change cost trend chart, and a recent-activity table. Charts use Chart.js loaded from cdnjs.
 
 ## What's *not* included (by design, for a first version)
 
@@ -28,8 +30,8 @@ to supply your own Stripe account, environment variables, and hosting. Budget
 
 1. Create a [Stripe account](https://dashboard.stripe.com/register) if you don't have one (test mode is fine to start).
 2. **Products & Prices**: Dashboard → Product catalog → *+ Add product*. Create two products, each with one **recurring** price:
-   - "Fleet Priority Basic" — e.g. $19/month
-   - "Fleet Priority Pro" — e.g. $49/month
+   - "Fleet Priority Basic" — e.g. $65/month
+   - "Fleet Priority Pro" — e.g. $275/month
    
    Copy each price's ID (starts with `price_`, *not* the product ID `prod_`).
 3. **API keys**: Dashboard → Developers → API keys. Copy the **Secret key** (starts with `sk_test_` in test mode).

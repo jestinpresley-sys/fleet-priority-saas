@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="1.9 59.78 155.68 35.5">
+  <defs>
+    <style>
+      .st2 {
+        fill: #fcee21;
+      }
+
+      .st3 {
+        fill: #fff;
+        font-family: BarlowCondensed-ExtraBoldItalic, 'Barlow Condensed';
+        font-size: 22.9px;
+        font-style: italic;
+        font-weight: 700;
+        stroke: navy;
+        stroke-miterlimit: 10;
+        stroke-width: .5px;
+      }
+    </style>
+  </defs>
+  <text class="st3" transform="translate(5.9 86.78)"><tspan x="0" y="0">FLEET PRIORITY</tspan></text>
+  <rect class="st2" x="143.91" y="69.8" width="2.93" height="16.4"/>
+  <rect class="st2" x="143.91" y="69.8" width="2.93" height="16.4" transform="translate(223.38 -67.38) rotate(90)"/>
+</svg>
