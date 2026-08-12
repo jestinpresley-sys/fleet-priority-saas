@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fleet Priority</title>
+<script>(function(){var t=localStorage.getItem('fp_theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark');document.documentElement.setAttribute('data-theme',t);if(localStorage.getItem('fp_sidebar')==='collapsed')document.documentElement.setAttribute('data-sidebar','collapsed');})();</script>
 <style>
   :root{
     --bg:#0f1420;
@@ -18,7 +19,23 @@
     --amber:#f5b94b;
     --red:#f0665f;
     --gray:#6b7280;
+    --btn-secondary-hover:#232b3f;
     --radius:10px;
+  }
+  :root[data-theme="light"]{
+    --bg:#f4f6fb;
+    --panel:#ffffff;
+    --panel-2:#eef1f7;
+    --border:#dde3ee;
+    --text:#161b26;
+    --text-dim:#667085;
+    --accent:#3b5fe0;
+    --accent-dim:#c3d0f7;
+    --green:#1f9d63;
+    --amber:#b3790a;
+    --red:#d1453c;
+    --gray:#5b6270;
+    --btn-secondary-hover:#e2e7f0;
   }
   *{box-sizing:border-box;}
   body{
@@ -30,19 +47,48 @@
   }
   .app{max-width:1200px;margin:0 auto;padding:28px 24px 60px;}
 
-  /* Topbar (account/billing) */
-  .topbar{
-    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
-    padding:10px 24px;border-bottom:1px solid var(--border);background:var(--panel);
+  /* Sidebar layout */
+  .layout{display:flex;align-items:stretch;min-height:100vh;}
+  .sidebar{
+    width:230px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;padding:14px 12px;transition:width .18s ease;
+    position:sticky;top:0;height:100vh;overflow-x:hidden;
   }
-  .topbar .who{font-size:13px;color:var(--text-dim);display:flex;align-items:center;gap:8px;}
+  html[data-sidebar="collapsed"] .sidebar{width:60px;padding:14px 8px;}
+  .sidebar-top{display:flex;justify-content:flex-end;margin-bottom:10px;}
+  html[data-sidebar="collapsed"] .sidebar-top{justify-content:center;}
+  .sidebar-collapse-btn{
+    display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;
+    background:none;color:var(--text-dim);border:1px solid var(--border);border-radius:7px;cursor:pointer;flex-shrink:0;
+  }
+  .sidebar-collapse-btn:hover{background:var(--btn-secondary-hover);color:var(--text);}
+  .sidebar-collapse-btn svg{transition:transform .18s ease;}
+  html[data-sidebar="collapsed"] .sidebar-collapse-btn svg{transform:rotate(180deg);}
+  .sidebar-user{padding:6px 8px 14px;border-bottom:1px solid var(--border);margin-bottom:10px;}
+  .sidebar-email{font-size:12.5px;color:var(--text);word-break:break-all;margin-bottom:7px;line-height:1.4;}
+  html[data-sidebar="collapsed"] .sidebar-user{display:flex;flex-direction:column;align-items:center;padding:6px 0 14px;}
+  html[data-sidebar="collapsed"] .sidebar-email{display:none;}
+  .sidebar-nav{display:flex;flex-direction:column;gap:3px;flex:1;}
+  .sidebar-link{
+    display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:8px;
+    color:var(--text-dim);font-size:13.5px;font-weight:600;text-decoration:none;
+    background:none;border:none;cursor:pointer;width:100%;text-align:left;font-family:inherit;
+  }
+  .sidebar-link:hover{background:var(--panel-2);color:var(--text);}
+  .sidebar-link svg{flex-shrink:0;width:18px;height:18px;}
+  .sidebar-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  html[data-sidebar="collapsed"] .sidebar-label{display:none;}
+  html[data-sidebar="collapsed"] .sidebar-link{justify-content:center;padding:9px;}
+  .sidebar-footer{border-top:1px solid var(--border);padding-top:10px;margin-top:10px;}
+  .main-content{flex:1;min-width:0;}
+
   .plan-badge{
     font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;
     padding:3px 9px;border-radius:20px;background:rgba(79,127,255,0.15);color:var(--accent);
   }
   .activating-note{
     display:none;background:rgba(245,185,75,0.12);border:1px solid rgba(245,185,75,0.35);
-    color:var(--amber);border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:16px;
+    color:var(--amber);border-radius:8px;padding:10px 14px;font-size:13px;margin:16px 24px 0;
   }
 
   /* Header */
@@ -59,7 +105,7 @@
   .btn-primary{background:var(--accent);color:#fff;}
   .btn-primary:hover{filter:brightness(1.1);}
   .btn-secondary{background:var(--panel-2);color:var(--text);border:1px solid var(--border);}
-  .btn-secondary:hover{background:#232b3f;}
+  .btn-secondary:hover{background:var(--btn-secondary-hover);}
   .btn-danger{background:transparent;color:var(--red);border:1px solid rgba(240,102,95,0.4);}
   .btn-danger:hover{background:rgba(240,102,95,0.1);}
   .btn-sm{padding:6px 10px;font-size:12.5px;}
@@ -243,7 +289,7 @@
     cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.4);
     transition:transform .15s ease,background .15s ease;
   }
-  .asst-fab:hover{background:#232b3f;transform:scale(1.06);}
+  .asst-fab:hover{background:var(--btn-secondary-hover);transform:scale(1.06);}
   .asst-fab:active{transform:scale(0.95);}
   .asst-fab .wrench-icon{width:32px;height:32px;}
   .asst-fab.hidden{display:none;}
@@ -330,20 +376,41 @@
 </head>
 <body>
 
-<div class="topbar">
-  <div class="who">
-    <span id="userEmail">—</span>
-    <span class="plan-badge" id="planBadge">PLAN</span>
-  </div>
-  <div style="display:flex;gap:8px;">
-    <a href="/overview.html" class="btn btn-secondary btn-sm" style="text-decoration:none;">Fleet overview</a>
-    <button class="btn btn-secondary btn-sm" id="manageBillingBtn">Manage billing</button>
-    <button class="btn btn-secondary btn-sm" id="logoutBtn">Log out</button>
-  </div>
-</div>
-
-<div class="app">
-  <div class="activating-note" id="activatingNote">Finalizing your subscription… this usually takes a few seconds.</div>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Collapse sidebar" aria-label="Collapse sidebar">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+      </button>
+    </div>
+    <div class="sidebar-user">
+      <div class="sidebar-email" id="userEmail">—</div>
+      <span class="plan-badge" id="planBadge">PLAN</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="/overview.html" class="sidebar-link" title="Fleet overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span class="sidebar-label">Fleet overview</span>
+      </a>
+      <button class="sidebar-link" id="manageBillingBtn" title="Manage billing">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2"/><line x1="2.5" y1="10" x2="21.5" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
+        <span class="sidebar-label">Manage billing</span>
+      </button>
+      <button class="sidebar-link" id="themeToggle" data-theme-toggle>
+        <span class="theme-toggle-icon"></span>
+        <span class="sidebar-label theme-toggle-label">Theme</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="sidebar-link" id="logoutBtn" title="Log out">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span class="sidebar-label">Log out</span>
+      </button>
+    </div>
+  </aside>
+  <div class="main-content">
+  <div class="app">
+    <div class="activating-note" id="activatingNote">Finalizing your subscription… this usually takes a few seconds.</div>
 
   <header>
     <div class="brand">
@@ -397,6 +464,8 @@
   </div>
 
   <footer>Data is saved to your account and synced across devices.<button type="button" class="restart-tour-link" id="restartTourBtn">Show tour again</button></footer>
+  </div>
+  </div>
 </div>
 
 <!-- Modal -->
@@ -750,6 +819,26 @@
   document.getElementById('logoutBtn').addEventListener('click', async ()=>{
     await api('/api/auth/logout', { method:'POST' });
     window.location.href = '/login.html';
+  });
+
+  const sidebarCollapseBtn = document.getElementById('sidebarCollapseBtn');
+  function updateSidebarCollapseLabel(){
+    const collapsed = document.documentElement.getAttribute('data-sidebar') === 'collapsed';
+    const label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+    sidebarCollapseBtn.setAttribute('title', label);
+    sidebarCollapseBtn.setAttribute('aria-label', label);
+  }
+  updateSidebarCollapseLabel();
+  sidebarCollapseBtn.addEventListener('click', ()=>{
+    const collapsed = document.documentElement.getAttribute('data-sidebar') === 'collapsed';
+    if(collapsed){
+      document.documentElement.removeAttribute('data-sidebar');
+      localStorage.setItem('fp_sidebar', 'expanded');
+    }else{
+      document.documentElement.setAttribute('data-sidebar', 'collapsed');
+      localStorage.setItem('fp_sidebar', 'collapsed');
+    }
+    updateSidebarCollapseLabel();
   });
 
   /* ---------------- Rendering ---------------- */
@@ -1634,5 +1723,6 @@
   init();
 })();
 </script>
+<script src="/theme.js"></script>
 </body>
 </html>

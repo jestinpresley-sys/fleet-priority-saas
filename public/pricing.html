@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Plans — Fleet Priority</title>
 <link rel="stylesheet" href="/style.css">
+<script>(function(){var t=localStorage.getItem('fp_theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark');document.documentElement.setAttribute('data-theme',t);})();</script>
 </head>
 <body>
 <div class="center-shell">
@@ -12,6 +13,7 @@
     <div class="topbar-shell">
       <div class="brand-row" style="margin:0;"><img src="/logo.svg" alt="Fleet Priority" class="brand-logo"></div>
       <div style="display:flex;gap:8px;">
+        <button class="theme-toggle" id="themeToggle" data-theme-toggle></button>
         <button class="btn btn-secondary btn-sm" id="portalBtn" style="display:none;">Manage billing</button>
         <button class="btn btn-secondary btn-sm" id="logoutBtn">Log out</button>
       </div>
@@ -105,5 +107,6 @@ document.getElementById('logoutBtn').addEventListener('click', async ()=>{
   window.location.href = '/login.html';
 });
 </script>
+<script src="/theme.js"></script>
 </body>
 </html>

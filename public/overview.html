@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fleet Overview — Fleet Priority</title>
+<script>(function(){var t=localStorage.getItem('fp_theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark');document.documentElement.setAttribute('data-theme',t);if(localStorage.getItem('fp_sidebar')==='collapsed')document.documentElement.setAttribute('data-sidebar','collapsed');})();</script>
 <style>
   :root{
     --bg:#0f1420;
@@ -17,7 +18,22 @@
     --green:#3ecf8e;
     --amber:#f5b94b;
     --red:#f0665f;
+    --btn-secondary-hover:#232b3f;
     --radius:10px;
+  }
+  :root[data-theme="light"]{
+    --bg:#f4f6fb;
+    --panel:#ffffff;
+    --panel-2:#eef1f7;
+    --border:#dde3ee;
+    --text:#161b26;
+    --text-dim:#667085;
+    --accent:#3b5fe0;
+    --accent-dim:#c3d0f7;
+    --green:#1f9d63;
+    --amber:#b3790a;
+    --red:#d1453c;
+    --btn-secondary-hover:#e2e7f0;
   }
   *{box-sizing:border-box;}
   body{
@@ -27,11 +43,41 @@
     color:var(--text);
     min-height:100vh;
   }
-  .topbar{
-    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
-    padding:10px 24px;border-bottom:1px solid var(--border);background:var(--panel);
+  /* Sidebar layout */
+  .layout{display:flex;align-items:stretch;min-height:100vh;}
+  .sidebar{
+    width:230px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;padding:14px 12px;transition:width .18s ease;
+    position:sticky;top:0;height:100vh;overflow-x:hidden;
   }
-  .topbar .who{font-size:13px;color:var(--text-dim);display:flex;align-items:center;gap:8px;}
+  html[data-sidebar="collapsed"] .sidebar{width:60px;padding:14px 8px;}
+  .sidebar-top{display:flex;justify-content:flex-end;margin-bottom:10px;}
+  html[data-sidebar="collapsed"] .sidebar-top{justify-content:center;}
+  .sidebar-collapse-btn{
+    display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;
+    background:none;color:var(--text-dim);border:1px solid var(--border);border-radius:7px;cursor:pointer;flex-shrink:0;
+  }
+  .sidebar-collapse-btn:hover{background:var(--btn-secondary-hover);color:var(--text);}
+  .sidebar-collapse-btn svg{transition:transform .18s ease;}
+  html[data-sidebar="collapsed"] .sidebar-collapse-btn svg{transform:rotate(180deg);}
+  .sidebar-user{padding:6px 8px 14px;border-bottom:1px solid var(--border);margin-bottom:10px;}
+  .sidebar-email{font-size:12.5px;color:var(--text);word-break:break-all;margin-bottom:7px;line-height:1.4;}
+  html[data-sidebar="collapsed"] .sidebar-user{display:flex;flex-direction:column;align-items:center;padding:6px 0 14px;}
+  html[data-sidebar="collapsed"] .sidebar-email{display:none;}
+  .sidebar-nav{display:flex;flex-direction:column;gap:3px;flex:1;}
+  .sidebar-link{
+    display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:8px;
+    color:var(--text-dim);font-size:13.5px;font-weight:600;text-decoration:none;
+    background:none;border:none;cursor:pointer;width:100%;text-align:left;font-family:inherit;
+  }
+  .sidebar-link:hover{background:var(--panel-2);color:var(--text);}
+  .sidebar-link svg{flex-shrink:0;width:18px;height:18px;}
+  .sidebar-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  html[data-sidebar="collapsed"] .sidebar-label{display:none;}
+  html[data-sidebar="collapsed"] .sidebar-link{justify-content:center;padding:9px;}
+  .sidebar-footer{border-top:1px solid var(--border);padding-top:10px;margin-top:10px;}
+  .main-content{flex:1;min-width:0;}
+
   .plan-badge{
     font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;
     padding:3px 9px;border-radius:20px;background:rgba(79,127,255,0.15);color:var(--accent);
@@ -42,7 +88,7 @@
   }
   .btn:active{transform:scale(0.97);}
   .btn-secondary{background:var(--panel-2);color:var(--text);border:1px solid var(--border);}
-  .btn-secondary:hover{background:#232b3f;}
+  .btn-secondary:hover{background:var(--btn-secondary-hover);}
   .btn-sm{padding:6px 10px;font-size:12.5px;}
 
   .app{max-width:1200px;margin:0 auto;padding:28px 24px 60px;}
@@ -57,8 +103,7 @@
   .stat.spend .num{color:var(--green);}
   .stat.oil .num{color:var(--amber);}
 
-  .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
-  @media (max-width: 860px){ .charts-grid{grid-template-columns:1fr;} }
+  .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:24px;}
   .chart-card{
     background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
     padding:18px;
@@ -88,41 +133,61 @@
 </head>
 <body>
 
-<div class="topbar">
-  <div class="who">
-    <span id="userEmail">—</span>
-    <span class="plan-badge" id="planBadge">PLAN</span>
-  </div>
-  <div style="display:flex;gap:8px;">
-    <a href="/app.html" class="btn btn-secondary btn-sm" style="text-decoration:none;">← Back to fleet</a>
-    <button class="btn btn-secondary btn-sm" id="logoutBtn">Log out</button>
-  </div>
-</div>
-
-<div class="app">
-  <header>
-    <h1>Fleet overview</h1>
-    <p>Spending trends and totals across your whole fleet.</p>
-  </header>
-
-  <div class="stats" id="stats"></div>
-
-  <div class="charts-grid">
-    <div class="chart-card">
-      <h3>Spend by service type</h3>
-      <p class="sub">All-time maintenance cost, grouped by category.</p>
-      <div class="chart-wrap" id="spendChartWrap"><canvas id="spendChart"></canvas></div>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Collapse sidebar" aria-label="Collapse sidebar">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+      </button>
     </div>
-    <div class="chart-card">
-      <h3>Oil change cost trend</h3>
-      <p class="sub">Average oil change cost by month, across the fleet.</p>
-      <div class="chart-wrap" id="oilChartWrap"><canvas id="oilChart"></canvas></div>
+    <div class="sidebar-user">
+      <div class="sidebar-email" id="userEmail">—</div>
+      <span class="plan-badge" id="planBadge">PLAN</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="/app.html" class="sidebar-link" title="Back to fleet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        <span class="sidebar-label">Back to fleet</span>
+      </a>
+      <button class="sidebar-link" id="themeToggle" data-theme-toggle>
+        <span class="theme-toggle-icon"></span>
+        <span class="sidebar-label theme-toggle-label">Theme</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="sidebar-link" id="logoutBtn" title="Log out">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span class="sidebar-label">Log out</span>
+      </button>
+    </div>
+  </aside>
+  <div class="main-content">
+  <div class="app">
+    <header>
+      <h1>Fleet overview</h1>
+      <p>Spending trends and totals across your whole fleet.</p>
+    </header>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Spend by service type</h3>
+        <p class="sub">All-time maintenance cost, grouped by category.</p>
+        <div class="chart-wrap" id="spendChartWrap"><canvas id="spendChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Oil change cost trend</h3>
+        <p class="sub">Average oil change cost by month, across the fleet.</p>
+        <div class="chart-wrap" id="oilChartWrap"><canvas id="oilChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="activity-card">
+      <h3>Recent maintenance activity</h3>
+      <div id="activityBody"></div>
     </div>
   </div>
-
-  <div class="activity-card">
-    <h3>Recent maintenance activity</h3>
-    <div id="activityBody"></div>
   </div>
 </div>
 
@@ -154,6 +219,26 @@
   document.getElementById('logoutBtn').addEventListener('click', async ()=>{
     await api('/api/auth/logout', { method:'POST' });
     window.location.href = '/login.html';
+  });
+
+  const sidebarCollapseBtn = document.getElementById('sidebarCollapseBtn');
+  function updateSidebarCollapseLabel(){
+    const collapsed = document.documentElement.getAttribute('data-sidebar') === 'collapsed';
+    const label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+    sidebarCollapseBtn.setAttribute('title', label);
+    sidebarCollapseBtn.setAttribute('aria-label', label);
+  }
+  updateSidebarCollapseLabel();
+  sidebarCollapseBtn.addEventListener('click', ()=>{
+    const collapsed = document.documentElement.getAttribute('data-sidebar') === 'collapsed';
+    if(collapsed){
+      document.documentElement.removeAttribute('data-sidebar');
+      localStorage.setItem('fp_sidebar', 'expanded');
+    }else{
+      document.documentElement.setAttribute('data-sidebar', 'collapsed');
+      localStorage.setItem('fp_sidebar', 'collapsed');
+    }
+    updateSidebarCollapseLabel();
   });
 
   function isActive(user){
@@ -202,22 +287,36 @@
     `;
   }
 
+  function cssVar(name){
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  let spendChartInstance = null;
+  let oilChartInstance = null;
+  let lastSpendTotals = null;
+  let lastOilTrend = null;
+
   function renderSpendChart(totals){
+    lastSpendTotals = totals;
     const wrap = document.getElementById('spendChartWrap');
     const entries = Object.entries(totals).sort((a,b)=> b[1]-a[1]);
+    if(spendChartInstance){ spendChartInstance.destroy(); spendChartInstance = null; }
     if(entries.length === 0){
       wrap.innerHTML = '<div class="chart-empty">No maintenance records yet — log some to see spend by category.</div>';
       return;
     }
+    wrap.innerHTML = '<canvas id="spendChart"></canvas>';
     const ctx = document.getElementById('spendChart').getContext('2d');
-    new Chart(ctx, {
+    const textDim = cssVar('--text-dim');
+    const border = cssVar('--border');
+    spendChartInstance = new Chart(ctx, {
       type: 'bar',
       data: {
         labels: entries.map(e=>e[0]),
         datasets: [{
           label: 'Spend',
           data: entries.map(e=> Math.round(e[1]*100)/100),
-          backgroundColor: '#4f7fff',
+          backgroundColor: cssVar('--accent'),
           borderRadius: 4,
         }],
       },
@@ -226,29 +325,35 @@
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          x: { ticks: { color: '#8b93a7' }, grid: { color: '#2a3245' } },
-          y: { ticks: { color: '#8b93a7' }, grid: { color: '#2a3245' }, beginAtZero: true },
+          x: { ticks: { color: textDim }, grid: { color: border } },
+          y: { ticks: { color: textDim }, grid: { color: border }, beginAtZero: true },
         },
       },
     });
   }
 
   function renderOilChart(trend){
+    lastOilTrend = trend;
     const wrap = document.getElementById('oilChartWrap');
+    if(oilChartInstance){ oilChartInstance.destroy(); oilChartInstance = null; }
     if(trend.labels.length === 0){
       wrap.innerHTML = '<div class="chart-empty">No oil change records yet — log a few to see the cost trend over time.</div>';
       return;
     }
+    wrap.innerHTML = '<canvas id="oilChart"></canvas>';
     const ctx = document.getElementById('oilChart').getContext('2d');
-    new Chart(ctx, {
+    const textDim = cssVar('--text-dim');
+    const border = cssVar('--border');
+    const amber = cssVar('--amber');
+    oilChartInstance = new Chart(ctx, {
       type: 'line',
       data: {
         labels: trend.labels,
         datasets: [{
           label: 'Avg. oil change cost',
           data: trend.values,
-          borderColor: '#f5b94b',
-          backgroundColor: 'rgba(245,185,75,0.15)',
+          borderColor: amber,
+          backgroundColor: amber + '26',
           tension: 0.25,
           fill: true,
           pointRadius: 3,
@@ -259,12 +364,17 @@
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          x: { ticks: { color: '#8b93a7' }, grid: { color: '#2a3245' } },
-          y: { ticks: { color: '#8b93a7' }, grid: { color: '#2a3245' }, beginAtZero: true },
+          x: { ticks: { color: textDim }, grid: { color: border } },
+          y: { ticks: { color: textDim }, grid: { color: border }, beginAtZero: true },
         },
       },
     });
   }
+
+  document.addEventListener('fp-theme-change', function(){
+    if(lastSpendTotals) renderSpendChart(lastSpendTotals);
+    if(lastOilTrend) renderOilChart(lastOilTrend);
+  });
 
   function renderActivity(vehicles, records){
     const body = document.getElementById('activityBody');
@@ -328,5 +438,6 @@
   init();
 })();
 </script>
+<script src="/theme.js"></script>
 </body>
 </html>
