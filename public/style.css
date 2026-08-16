@@ -66,6 +66,7 @@ a:hover{text-decoration:underline;}
 }
 .brand-row{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:22px;}
 .brand-logo{height:28px;width:auto;}
+.brand-logo-lg{height:38px;}
 
 .card{
   background:var(--panel);border:1px solid var(--border);border-radius:14px;

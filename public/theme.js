@@ -6,12 +6,6 @@
     return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
   }
 
-  function updateLogos(theme){
-    document.querySelectorAll('img.brand-logo').forEach(function(img){
-      img.src = theme === 'light' ? '/logo-light.svg' : '/logo.svg';
-    });
-  }
-
   function updateToggleButtons(theme){
     var icon = theme === 'light' ? SUN_ICON : MOON_ICON;
     var title = theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode';
@@ -34,7 +28,6 @@
   function setTheme(theme){
     document.documentElement.setAttribute('data-theme', theme);
     try{ localStorage.setItem('fp_theme', theme); }catch(e){}
-    updateLogos(theme);
     updateToggleButtons(theme);
     document.dispatchEvent(new CustomEvent('fp-theme-change', { detail: { theme: theme } }));
   }
@@ -45,7 +38,6 @@
 
   document.addEventListener('DOMContentLoaded', function(){
     var theme = currentTheme();
-    updateLogos(theme);
     updateToggleButtons(theme);
     document.querySelectorAll('[data-theme-toggle]').forEach(function(btn){
       btn.addEventListener('click', toggleTheme);

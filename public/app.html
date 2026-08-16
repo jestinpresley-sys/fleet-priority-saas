@@ -52,22 +52,17 @@
   .sidebar{
     width:230px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);
     display:flex;flex-direction:column;padding:14px 12px;transition:width .18s ease;
-    position:sticky;top:0;height:100vh;overflow-x:hidden;
+    position:sticky;top:0;height:100vh;overflow-x:hidden;overflow-y:auto;
   }
-  html[data-sidebar="collapsed"] .sidebar{width:60px;padding:14px 8px;}
   .sidebar-top{display:flex;justify-content:flex-end;margin-bottom:10px;}
-  html[data-sidebar="collapsed"] .sidebar-top{justify-content:center;}
   .sidebar-collapse-btn{
     display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;
     background:none;color:var(--text-dim);border:1px solid var(--border);border-radius:7px;cursor:pointer;flex-shrink:0;
   }
   .sidebar-collapse-btn:hover{background:var(--btn-secondary-hover);color:var(--text);}
   .sidebar-collapse-btn svg{transition:transform .18s ease;}
-  html[data-sidebar="collapsed"] .sidebar-collapse-btn svg{transform:rotate(180deg);}
   .sidebar-user{padding:6px 8px 14px;border-bottom:1px solid var(--border);margin-bottom:10px;}
   .sidebar-email{font-size:12.5px;color:var(--text);word-break:break-all;margin-bottom:7px;line-height:1.4;}
-  html[data-sidebar="collapsed"] .sidebar-user{display:flex;flex-direction:column;align-items:center;padding:6px 0 14px;}
-  html[data-sidebar="collapsed"] .sidebar-email{display:none;}
   .sidebar-nav{display:flex;flex-direction:column;gap:3px;flex:1;}
   .sidebar-link{
     display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:8px;
@@ -77,10 +72,37 @@
   .sidebar-link:hover{background:var(--panel-2);color:var(--text);}
   .sidebar-link svg{flex-shrink:0;width:18px;height:18px;}
   .sidebar-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  html[data-sidebar="collapsed"] .sidebar-label{display:none;}
-  html[data-sidebar="collapsed"] .sidebar-link{justify-content:center;padding:9px;}
   .sidebar-footer{border-top:1px solid var(--border);padding-top:10px;margin-top:10px;}
   .main-content{flex:1;min-width:0;}
+  .mobile-menu-btn{
+    display:none;align-items:center;justify-content:center;width:38px;height:38px;padding:0;
+    background:var(--panel-2);color:var(--text);border:1px solid var(--border);border-radius:8px;
+    cursor:pointer;flex-shrink:0;
+  }
+  .sidebar-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:199;display:none;}
+
+  /* Desktop: chevron collapses sidebar to an icon rail */
+  @media (min-width:769px){
+    html[data-sidebar="collapsed"] .sidebar{width:60px;padding:14px 8px;}
+    html[data-sidebar="collapsed"] .sidebar-top{justify-content:center;}
+    html[data-sidebar="collapsed"] .sidebar-collapse-btn svg{transform:rotate(180deg);}
+    html[data-sidebar="collapsed"] .sidebar-user{display:flex;flex-direction:column;align-items:center;padding:6px 0 14px;}
+    html[data-sidebar="collapsed"] .sidebar-email{display:none;}
+    html[data-sidebar="collapsed"] .sidebar-label{display:none;}
+    html[data-sidebar="collapsed"] .sidebar-link{justify-content:center;padding:9px;}
+  }
+
+  /* Mobile: sidebar becomes an off-canvas drawer, opened via a hamburger button */
+  @media (max-width:768px){
+    .sidebar{
+      position:fixed;top:0;left:0;width:250px;max-width:82vw;height:100vh;
+      z-index:200;transform:translateX(-100%);box-shadow:8px 0 30px rgba(0,0,0,0.4);
+    }
+    .sidebar.mobile-open{transform:translateX(0);}
+    .sidebar-collapse-btn{display:none;}
+    .mobile-menu-btn{display:flex;}
+    .sidebar-backdrop.open{display:block;}
+  }
 
   .plan-badge{
     font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;
@@ -234,6 +256,7 @@
 
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .form-grid .full{grid-column:1/-1;}
+  @media (max-width:640px){ .form-grid{grid-template-columns:1fr;} }
   .field label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:5px;font-weight:600;}
   .field input,.field select,.field textarea{
     width:100%;background:var(--panel-2);border:1px solid var(--border);border-radius:7px;
@@ -275,6 +298,7 @@
   .maint-add-row{display:grid;grid-template-columns:1.2fr 1fr 0.8fr 0.8fr auto;gap:6px;align-items:end;}
   .maint-add-row .field{margin:0;}
   .maint-add-row label{font-size:10.5px;}
+  @media (max-width:640px){ .maint-add-row{grid-template-columns:1fr;} }
   .modal-actions{display:flex;justify-content:space-between;gap:10px;margin-top:22px;padding-top:16px;border-top:1px solid var(--border);}
   .modal-actions .right{display:flex;gap:8px;}
 
@@ -343,6 +367,7 @@
   }
   .asst-settings-row{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;}
   .asst-settings-fields{display:grid;grid-template-columns:1.3fr 1fr;gap:8px;}
+  @media (max-width:480px){ .asst-settings-fields{grid-template-columns:1fr;} }
   .asst-settings-fields .field{margin:0;}
   .asst-settings-fields label{font-size:10.5px;}
   .asst-settings-hint{margin:0;font-size:11.5px;color:var(--text-dim);line-height:1.5;}
@@ -408,12 +433,16 @@
       </button>
     </div>
   </aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
   <div class="main-content">
   <div class="app">
     <div class="activating-note" id="activatingNote">Finalizing your subscription… this usually takes a few seconds.</div>
 
   <header>
     <div class="brand">
+      <button class="mobile-menu-btn" id="mobileMenuBtn" title="Open menu" aria-label="Open menu">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
       <div>
         <img src="/logo.svg" alt="Fleet Priority" class="brand-logo">
         <p>Rental car fleet notator</p>
@@ -840,6 +869,24 @@
     }
     updateSidebarCollapseLabel();
   });
+
+  /* Mobile off-canvas sidebar drawer */
+  const sidebarEl = document.getElementById('sidebar');
+  const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+  const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+  function openMobileSidebar(){
+    sidebarEl.classList.add('mobile-open');
+    sidebarBackdrop.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeMobileSidebar(){
+    sidebarEl.classList.remove('mobile-open');
+    sidebarBackdrop.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  mobileMenuBtn.addEventListener('click', openMobileSidebar);
+  sidebarBackdrop.addEventListener('click', closeMobileSidebar);
+  document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeMobileSidebar(); });
 
   /* ---------------- Rendering ---------------- */
   function statusClass(status){

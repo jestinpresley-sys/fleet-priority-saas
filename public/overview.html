@@ -48,22 +48,17 @@
   .sidebar{
     width:230px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);
     display:flex;flex-direction:column;padding:14px 12px;transition:width .18s ease;
-    position:sticky;top:0;height:100vh;overflow-x:hidden;
+    position:sticky;top:0;height:100vh;overflow-x:hidden;overflow-y:auto;
   }
-  html[data-sidebar="collapsed"] .sidebar{width:60px;padding:14px 8px;}
   .sidebar-top{display:flex;justify-content:flex-end;margin-bottom:10px;}
-  html[data-sidebar="collapsed"] .sidebar-top{justify-content:center;}
   .sidebar-collapse-btn{
     display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;
     background:none;color:var(--text-dim);border:1px solid var(--border);border-radius:7px;cursor:pointer;flex-shrink:0;
   }
   .sidebar-collapse-btn:hover{background:var(--btn-secondary-hover);color:var(--text);}
   .sidebar-collapse-btn svg{transition:transform .18s ease;}
-  html[data-sidebar="collapsed"] .sidebar-collapse-btn svg{transform:rotate(180deg);}
   .sidebar-user{padding:6px 8px 14px;border-bottom:1px solid var(--border);margin-bottom:10px;}
   .sidebar-email{font-size:12.5px;color:var(--text);word-break:break-all;margin-bottom:7px;line-height:1.4;}
-  html[data-sidebar="collapsed"] .sidebar-user{display:flex;flex-direction:column;align-items:center;padding:6px 0 14px;}
-  html[data-sidebar="collapsed"] .sidebar-email{display:none;}
   .sidebar-nav{display:flex;flex-direction:column;gap:3px;flex:1;}
   .sidebar-link{
     display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:8px;
@@ -73,10 +68,35 @@
   .sidebar-link:hover{background:var(--panel-2);color:var(--text);}
   .sidebar-link svg{flex-shrink:0;width:18px;height:18px;}
   .sidebar-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  html[data-sidebar="collapsed"] .sidebar-label{display:none;}
-  html[data-sidebar="collapsed"] .sidebar-link{justify-content:center;padding:9px;}
   .sidebar-footer{border-top:1px solid var(--border);padding-top:10px;margin-top:10px;}
   .main-content{flex:1;min-width:0;}
+  .mobile-menu-btn{
+    display:none;align-items:center;justify-content:center;width:38px;height:38px;padding:0;
+    background:var(--panel-2);color:var(--text);border:1px solid var(--border);border-radius:8px;
+    cursor:pointer;flex-shrink:0;
+  }
+  .sidebar-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:199;display:none;}
+
+  @media (min-width:769px){
+    html[data-sidebar="collapsed"] .sidebar{width:60px;padding:14px 8px;}
+    html[data-sidebar="collapsed"] .sidebar-top{justify-content:center;}
+    html[data-sidebar="collapsed"] .sidebar-collapse-btn svg{transform:rotate(180deg);}
+    html[data-sidebar="collapsed"] .sidebar-user{display:flex;flex-direction:column;align-items:center;padding:6px 0 14px;}
+    html[data-sidebar="collapsed"] .sidebar-email{display:none;}
+    html[data-sidebar="collapsed"] .sidebar-label{display:none;}
+    html[data-sidebar="collapsed"] .sidebar-link{justify-content:center;padding:9px;}
+  }
+
+  @media (max-width:768px){
+    .sidebar{
+      position:fixed;top:0;left:0;width:250px;max-width:82vw;height:100vh;
+      z-index:200;transform:translateX(-100%);box-shadow:8px 0 30px rgba(0,0,0,0.4);
+    }
+    .sidebar.mobile-open{transform:translateX(0);}
+    .sidebar-collapse-btn{display:none;}
+    .mobile-menu-btn{display:flex;}
+    .sidebar-backdrop.open{display:block;}
+  }
 
   .plan-badge{
     font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;
@@ -161,11 +181,17 @@
       </button>
     </div>
   </aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
   <div class="main-content">
   <div class="app">
-    <header>
-      <h1>Fleet overview</h1>
-      <p>Spending trends and totals across your whole fleet.</p>
+    <header style="display:flex;align-items:flex-start;gap:12px;">
+      <button class="mobile-menu-btn" id="mobileMenuBtn" title="Open menu" aria-label="Open menu">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <h1>Fleet overview</h1>
+        <p>Spending trends and totals across your whole fleet.</p>
+      </div>
     </header>
 
     <div class="stats" id="stats"></div>
@@ -240,6 +266,23 @@
     }
     updateSidebarCollapseLabel();
   });
+
+  const sidebarEl = document.getElementById('sidebar');
+  const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+  const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+  function openMobileSidebar(){
+    sidebarEl.classList.add('mobile-open');
+    sidebarBackdrop.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeMobileSidebar(){
+    sidebarEl.classList.remove('mobile-open');
+    sidebarBackdrop.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  mobileMenuBtn.addEventListener('click', openMobileSidebar);
+  sidebarBackdrop.addEventListener('click', closeMobileSidebar);
+  document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeMobileSidebar(); });
 
   function isActive(user){
     return user && (user.subscriptionStatus === 'active' || user.subscriptionStatus === 'trialing');
