@@ -247,6 +247,7 @@
   .payoff-bar-paid{background:var(--green);height:100%;width:0%;transition:width .2s ease;}
   .payoff-bar-label{font-size:11.5px;color:var(--text-dim);margin-top:5px;}
   .card-payoff{margin-top:10px;}
+  .vehicle-gas-chart-wrap{position:relative;height:160px;}
   .form-grid input:disabled,.form-grid select:disabled,.form-grid textarea:disabled{
     background:var(--panel-2);color:var(--text-dim);cursor:default;opacity:1;
   }
@@ -961,29 +962,52 @@
     `</svg>`;
   }
 
-  function buildVehicleTrend(records, type){
-    const filtered = records.filter(r => r.type === type && r.date);
-    const byMonth = {};
-    filtered.forEach(r=>{
-      const month = r.date.slice(0,7);
-      if(!byMonth[month]) byMonth[month] = { sum: 0, count: 0 };
-      byMonth[month].sum += Number(r.cost) || 0;
-      byMonth[month].count += 1;
-    });
-    return Object.keys(byMonth).sort().map(m => byMonth[m].sum / byMonth[m].count);
-  }
-
+  let vehicleGasChartInstance = null;
   function renderVehicleGasTrend(records){
     const wrap = document.getElementById('vehicleGasTrendWrap');
     const chartEl = document.getElementById('vehicleGasTrendChart');
-    const trend = buildVehicleTrend(records, 'Gas');
-    if(trend.length < 2){
-      wrap.style.display = 'block';
+    const gas = records
+      .filter(r => r.type === 'Gas' && r.date)
+      .slice()
+      .sort((a,b)=> (a.date||'').localeCompare(b.date||''));
+
+    if(vehicleGasChartInstance){ vehicleGasChartInstance.destroy(); vehicleGasChartInstance = null; }
+    wrap.style.display = 'block';
+
+    if(gas.length < 2){
       chartEl.innerHTML = '<p class="maint-note">Log a couple gas fill-ups on this vehicle to see the trend.</p>';
       return;
     }
-    wrap.style.display = 'block';
-    chartEl.innerHTML = sparklineSvg(trend, 'var(--accent)', 'Gas cost trend for this vehicle');
+    chartEl.innerHTML = '<div class="vehicle-gas-chart-wrap"><canvas id="vehicleGasChartCanvas"></canvas></div>';
+    const ctx = document.getElementById('vehicleGasChartCanvas').getContext('2d');
+    const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const textDim = cssVar('--text-dim');
+    const border = cssVar('--border');
+    const accent = cssVar('--accent');
+    vehicleGasChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: gas.map(r => fmtDate(r.date)),
+        datasets: [{
+          label: 'Fill-up cost',
+          data: gas.map(r => Number(r.cost) || 0),
+          borderColor: accent,
+          backgroundColor: accent + '26',
+          tension: 0.25,
+          fill: true,
+          pointRadius: 3,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: textDim }, grid: { color: border } },
+          y: { min: 0, max: 200, ticks: { color: textDim, stepSize: 25 }, grid: { color: border } },
+        },
+      },
+    });
   }
 
   function renderOverviewPreview(records){
@@ -1410,6 +1434,7 @@
       maintenanceListEl.innerHTML = '';
       maintenanceAddRow.style.display = 'none';
       document.getElementById('vehicleGasTrendWrap').style.display = 'none';
+      if(vehicleGasChartInstance){ vehicleGasChartInstance.destroy(); vehicleGasChartInstance = null; }
       return;
     }
     maintenanceEmptyNote.style.display = 'none';
@@ -2150,6 +2175,7 @@
   init();
 })();
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 <script src="/theme.js"></script>
 <script src="/notifications-badge.js"></script>
 </body>
