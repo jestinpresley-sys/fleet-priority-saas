@@ -13,7 +13,7 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { vehicleId, date, type, cost, mileage, note } = req.body || {};
+  const { vehicleId, date, type, cost, mileage, note, nextDue } = req.body || {};
   if (!vehicleId || !db.getVehicle(req.user.id, vehicleId)) {
     return res.status(400).json({ error: 'A valid vehicle is required.' });
   }
@@ -28,13 +28,14 @@ router.post('/', (req, res) => {
     cost: Number.isFinite(numericCost) ? numericCost : 0,
     mileage: mileage || '',
     note: note || '',
+    nextDue: nextDue || '',
   });
   res.status(201).json({ record });
 });
 
 router.put('/:id', (req, res) => {
   const patch = {};
-  ['vehicleId', 'date', 'type', 'cost', 'mileage', 'note'].forEach((f) => {
+  ['vehicleId', 'date', 'type', 'cost', 'mileage', 'note', 'nextDue'].forEach((f) => {
     if (req.body[f] !== undefined) {
       patch[f] = f === 'cost' ? Number(req.body[f]) || 0 : req.body[f];
     }

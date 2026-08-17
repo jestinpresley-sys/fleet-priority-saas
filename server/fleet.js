@@ -12,11 +12,11 @@ const PLAN_LIMITS = { basic: 10, pro: 50 };
 // Fields only Pro accounts may set — matches the "VIN & insurance tracking"
 // perk advertised on the pricing page. Enforced here, not just hidden in the
 // UI, so a Basic account can't set them by calling the API directly.
-const PRO_ONLY_FIELDS = ['vin', 'insProvider', 'insPolicy'];
+const PRO_ONLY_FIELDS = ['vin', 'insProvider', 'insPolicy', 'insExpiration'];
 
 const FIELDS = [
-  'tag', 'vin', 'year', 'make', 'model', 'status', 'mileage', 'tire',
-  'paidOff', 'note', 'mechName', 'mechPhone', 'renter', 'insProvider', 'insPolicy',
+  'tag', 'tagExpiration', 'vin', 'year', 'make', 'model', 'status', 'mileage', 'tire', 'tireBrand',
+  'paidOff', 'note', 'mechName', 'mechPhone', 'renter', 'insProvider', 'insPolicy', 'insExpiration',
 ];
 // Note: 'imagePath' is intentionally excluded from FIELDS — it's only ever
 // set through the dedicated image upload/delete routes below, never through

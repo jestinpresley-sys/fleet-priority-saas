@@ -65,7 +65,7 @@
   .sidebar-email{font-size:12.5px;color:var(--text);word-break:break-all;margin-bottom:7px;line-height:1.4;}
   .sidebar-nav{display:flex;flex-direction:column;gap:3px;flex:1;}
   .sidebar-link{
-    display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:8px;
+    display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:8px;position:relative;
     color:var(--text-dim);font-size:13.5px;font-weight:600;text-decoration:none;
     background:none;border:none;cursor:pointer;width:100%;text-align:left;font-family:inherit;
   }
@@ -210,6 +210,30 @@
   .badge-rented{background:rgba(79,127,255,0.15);color:var(--accent);}
   .badge-maintenance{background:rgba(245,185,75,0.15);color:var(--amber);}
   .badge-out{background:rgba(240,102,95,0.15);color:var(--red);}
+  .tag-expiry{
+    display:block;font-size:11px;margin-top:5px;color:var(--text-dim);
+  }
+  .tag-expiry.soon{color:var(--amber);font-weight:600;}
+  .tag-expiry.overdue{color:var(--red);font-weight:600;}
+  .notif-badge{
+    display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;
+    padding:0 4px;border-radius:20px;background:var(--red);color:#fff;font-size:10px;font-weight:700;
+    margin-left:auto;
+  }
+  html[data-sidebar="collapsed"] .notif-badge{position:absolute;top:2px;right:2px;margin-left:0;}
+  .notif-page-badge{
+    font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;
+  }
+  .notif-page-badge.overdue{background:rgba(240,102,95,0.15);color:var(--red);}
+  .notif-page-badge.soon{background:rgba(245,185,75,0.15);color:var(--amber);}
+  .notif-card{
+    display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:14px 16px;margin-bottom:10px;cursor:pointer;
+  }
+  .notif-card:hover{border-color:var(--accent-dim);}
+  .notif-card .notif-title{font-weight:600;font-size:14px;}
+  .notif-card .notif-detail{font-size:12.5px;color:var(--text-dim);margin-top:3px;}
   .card-row{display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim);padding:4px 0;}
   .card-row span:last-child{color:var(--text);text-align:right;}
   .paid-pill{
@@ -295,7 +319,7 @@
   .maint-row .m-mileage{color:var(--text-dim);min-width:70px;text-align:right;}
   .maint-row .m-del{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:2px 4px;}
   .maint-row .m-del:hover{color:var(--red);}
-  .maint-add-row{display:grid;grid-template-columns:1.2fr 1fr 0.8fr 0.8fr auto;gap:6px;align-items:end;}
+  .maint-add-row{display:grid;grid-template-columns:1.2fr 1fr 0.8fr 0.8fr 1fr auto;gap:6px;align-items:end;}
   .maint-add-row .field{margin:0;}
   .maint-add-row label{font-size:10.5px;}
   @media (max-width:640px){ .maint-add-row{grid-template-columns:1fr;} }
@@ -417,6 +441,11 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
         <span class="sidebar-label">Fleet overview</span>
       </a>
+      <a href="/notifications.html" class="sidebar-link" title="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="sidebar-label">Notifications</span>
+        <span class="notif-badge" id="notifBadge" style="display:none;">0</span>
+      </a>
       <button class="sidebar-link" id="manageBillingBtn" title="Manage billing">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2"/><line x1="2.5" y1="10" x2="21.5" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
         <span class="sidebar-label">Manage billing</span>
@@ -512,6 +541,7 @@
         <div class="field"><label>Make</label><input type="text" id="f_make" placeholder="Toyota" required></div>
         <div class="field"><label>Model</label><input type="text" id="f_model" placeholder="Camry" required></div>
         <div class="field"><label>License Tag / Plate</label><input type="text" id="f_tag" placeholder="ABC-1234" required></div>
+        <div class="field"><label>Tag Expiration</label><input type="date" id="f_tagExpiration"></div>
         <div class="field" id="vinFieldWrap"><label>VIN</label><input type="text" id="f_vin" placeholder="1HGCM82633A004352"></div>
         <div class="field"><label>Status</label>
           <select id="f_status">
@@ -537,6 +567,7 @@
         <div class="section-label">Condition</div>
         <div class="field"><label>Current Mileage</label><input type="number" id="f_mileage" placeholder="45210" min="0"></div>
         <div class="field"><label>Tire Type</label><input type="text" id="f_tire" placeholder="All-season, All-terrain, etc."></div>
+        <div class="field"><label>Tire Brand</label><input type="text" id="f_tireBrand" placeholder="Michelin, Goodyear, etc."></div>
         <div class="field full checkbox-row"><input type="checkbox" id="f_paidoff"><label style="margin:0;" for="f_paidoff">Vehicle is paid off</label></div>
         <div class="field full"><label>Current Car Note (condition, payoff status, issues, etc.)</label><textarea id="f_note" placeholder="e.g. $340/mo remaining on loan, minor bumper scuff, due for oil change"></textarea></div>
 
@@ -559,6 +590,7 @@
             <div class="field"><label>Date</label><input type="date" id="m_date"></div>
             <div class="field"><label>Cost ($)</label><input type="number" id="m_cost" min="0" step="0.01" placeholder="45.00"></div>
             <div class="field"><label>Mileage</label><input type="number" id="m_mileage" min="0" placeholder="Optional"></div>
+            <div class="field"><label>Next Due</label><input type="date" id="m_nextDue" title="Optional — set to get a notification reminder"></div>
             <button type="button" class="btn btn-secondary btn-sm" id="m_addBtn">Add</button>
           </div>
         </div>
@@ -570,7 +602,8 @@
         <div class="section-label">Rental &amp; Insurance</div>
         <div class="field"><label>Current Renter</label><input type="text" id="f_renter" placeholder="Leave blank if not rented"></div>
         <div class="field" id="insProviderFieldWrap"><label>Insurance Provider</label><input type="text" id="f_insProvider" placeholder="Progressive"></div>
-        <div class="field full" id="insPolicyFieldWrap"><label>Insurance Policy #</label><input type="text" id="f_insPolicy" placeholder="POL-00000000"></div>
+        <div class="field" id="insPolicyFieldWrap"><label>Insurance Policy #</label><input type="text" id="f_insPolicy" placeholder="POL-00000000"></div>
+        <div class="field" id="insExpirationFieldWrap"><label>Insurance Expiration</label><input type="date" id="f_insExpiration"></div>
         <p class="maint-note field full" id="proUpgradeNote" style="display:none;">VIN and insurance tracking are Pro features. <a href="/pricing.html" style="color:var(--accent);">Upgrade to Pro</a> to unlock them.</p>
 
       </div>
@@ -735,6 +768,10 @@
     return !!(currentUser && currentUser.plan === 'pro');
   }
 
+  function refreshNotifBadge(){
+    if(window.FPNotif) window.FPNotif.refreshBadge();
+  }
+
   async function init(){
     currentUser = await fetchUser();
     if(!currentUser){
@@ -770,6 +807,14 @@
     }
     render();
     initOnboarding();
+    refreshNotifBadge();
+
+    const deepLinkVehicle = new URLSearchParams(window.location.search).get('vehicle');
+    if(deepLinkVehicle && cars.some(c=>c.id===deepLinkVehicle)){
+      openModal(deepLinkVehicle);
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+    }
 
     try{
       const { records } = await api('/api/maintenance');
@@ -918,7 +963,7 @@
     let list = cars.filter(c=>{
       if(status && c.status !== status) return false;
       if(!q) return true;
-      const hay = [c.tag,c.vin,c.make,c.model,c.year,c.mechName,c.renter].join(' ').toLowerCase();
+      const hay = [c.tag,c.vin,c.make,c.model,c.year,c.mechName,c.renter,c.tireBrand].join(' ').toLowerCase();
       return hay.includes(q);
     });
     const sortBy = sortSelect.value;
@@ -934,6 +979,31 @@
   function escapeHtml(str){
     if(str===undefined || str===null) return '';
     return String(str).replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  }
+
+  function daysUntil(dateStr){
+    if(!dateStr) return null;
+    const target = new Date(dateStr + 'T00:00:00');
+    if(Number.isNaN(target.getTime())) return null;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.round((target - today) / 86400000);
+  }
+  function fmtDate(dateStr){
+    if(!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    if(Number.isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+  }
+  function tagExpiryHtml(dateStr){
+    if(!dateStr) return '';
+    const days = daysUntil(dateStr);
+    if(days === null) return '';
+    let cls = '';
+    let label = `Tag expires ${fmtDate(dateStr)}`;
+    if(days < 0){ cls = 'overdue'; label = `Tag expired ${fmtDate(dateStr)}`; }
+    else if(days <= 30){ cls = 'soon'; label = `Tag expires ${fmtDate(dateStr)} (${days}d)`; }
+    return `<span class="tag-expiry ${cls}">${escapeHtml(label)}</span>`;
   }
 
   function render(){
@@ -964,11 +1034,12 @@
           <div>
             <div class="ymm">${escapeHtml(c.year)} ${escapeHtml(c.make)} ${escapeHtml(c.model)}</div>
             <div class="tag" style="margin-top:6px;display:inline-block;">${escapeHtml(c.tag)}</div>
+            ${tagExpiryHtml(c.tagExpiration)}
           </div>
           <span class="badge ${statusClass(c.status)}">${escapeHtml(c.status)}</span>
         </div>
         <div class="card-row"><span>Mileage</span><span>${c.mileage ? Number(c.mileage).toLocaleString()+' mi' : '—'}</span></div>
-        <div class="card-row"><span>Tire Type</span><span>${escapeHtml(c.tire) || '—'}</span></div>
+        <div class="card-row"><span>Tires</span><span>${[escapeHtml(c.tireBrand), escapeHtml(c.tire)].filter(Boolean).join(' ') || '—'}</span></div>
         <div class="card-row"><span>Paid Off</span><span><span class="paid-pill ${c.paidOff ? 'paid-yes':'paid-no'}">${c.paidOff ? 'Paid Off' : 'Financed'}</span></span></div>
         <div class="card-row"><span>Mechanic</span><span>${escapeHtml(c.mechName) || '—'}</span></div>
         ${c.renter ? `<div class="card-row"><span>Renter</span><span>${escapeHtml(c.renter)}</span></div>` : ''}
@@ -995,10 +1066,12 @@
       document.getElementById('f_make').value = c.make || '';
       document.getElementById('f_model').value = c.model || '';
       document.getElementById('f_tag').value = c.tag || '';
+      document.getElementById('f_tagExpiration').value = c.tagExpiration || '';
       document.getElementById('f_vin').value = c.vin || '';
       document.getElementById('f_status').value = c.status || 'Available';
       document.getElementById('f_mileage').value = c.mileage || '';
       document.getElementById('f_tire').value = c.tire || '';
+      document.getElementById('f_tireBrand').value = c.tireBrand || '';
       document.getElementById('f_paidoff').checked = !!c.paidOff;
       document.getElementById('f_note').value = c.note || '';
       document.getElementById('f_mechName').value = c.mechName || '';
@@ -1006,6 +1079,7 @@
       document.getElementById('f_renter').value = c.renter || '';
       document.getElementById('f_insProvider').value = c.insProvider || '';
       document.getElementById('f_insPolicy').value = c.insPolicy || '';
+      document.getElementById('f_insExpiration').value = c.insExpiration || '';
     }else{
       modalTitle.textContent = 'Add Vehicle';
       deleteBtn.style.display = 'none';
@@ -1015,6 +1089,7 @@
     document.getElementById('vinFieldWrap').style.display = pro ? '' : 'none';
     document.getElementById('insProviderFieldWrap').style.display = pro ? '' : 'none';
     document.getElementById('insPolicyFieldWrap').style.display = pro ? '' : 'none';
+    document.getElementById('insExpirationFieldWrap').style.display = pro ? '' : 'none';
     document.getElementById('proUpgradeNote').style.display = pro ? 'none' : 'block';
     refreshMaintenanceUI(id);
     overlay.classList.add('open');
@@ -1046,6 +1121,7 @@
         <span class="m-type">${escapeHtml(r.type || 'Other')}</span>
         <span class="m-cost">${maintCostFmt(r.cost)}</span>
         <span class="m-mileage">${r.mileage ? Number(r.mileage).toLocaleString()+' mi' : ''}</span>
+        <span class="m-mileage">${r.nextDue ? 'Next: '+escapeHtml(r.nextDue) : ''}</span>
         <button type="button" class="m-del" data-id="${r.id}" title="Delete record">✕</button>
       </div>
     `).join('');
@@ -1078,17 +1154,20 @@
     const type = document.getElementById('m_type').value;
     const cost = document.getElementById('m_cost').value;
     const mileage = document.getElementById('m_mileage').value;
+    const nextDue = document.getElementById('m_nextDue').value;
     if(!date){
       alert('Pick a date for this maintenance record.');
       return;
     }
     try{
-      await api('/api/maintenance', { method:'POST', body: JSON.stringify({ vehicleId: editingId, date, type, cost, mileage }) });
+      await api('/api/maintenance', { method:'POST', body: JSON.stringify({ vehicleId: editingId, date, type, cost, mileage, nextDue }) });
       document.getElementById('m_date').value = '';
       document.getElementById('m_cost').value = '';
       document.getElementById('m_mileage').value = '';
+      document.getElementById('m_nextDue').value = '';
       refreshMaintenanceUI(editingId);
       refreshOverviewPreview();
+      refreshNotifBadge();
     }catch(err){
       alert(err.message);
     }
@@ -1109,6 +1188,7 @@
       await api(`/api/maintenance/${id}`, { method:'DELETE' });
       refreshMaintenanceUI(editingId);
       refreshOverviewPreview();
+      refreshNotifBadge();
     }catch(err){
       alert(err.message);
     }
@@ -1127,9 +1207,11 @@
       make: document.getElementById('f_make').value.trim(),
       model: document.getElementById('f_model').value.trim(),
       tag: document.getElementById('f_tag').value.trim(),
+      tagExpiration: document.getElementById('f_tagExpiration').value,
       status: document.getElementById('f_status').value,
       mileage: document.getElementById('f_mileage').value,
       tire: document.getElementById('f_tire').value.trim(),
+      tireBrand: document.getElementById('f_tireBrand').value.trim(),
       paidOff: document.getElementById('f_paidoff').checked,
       note: document.getElementById('f_note').value.trim(),
       mechName: document.getElementById('f_mechName').value.trim(),
@@ -1140,6 +1222,7 @@
       data.vin = document.getElementById('f_vin').value.trim();
       data.insProvider = document.getElementById('f_insProvider').value.trim();
       data.insPolicy = document.getElementById('f_insPolicy').value.trim();
+      data.insExpiration = document.getElementById('f_insExpiration').value;
     }
     saveBtn.disabled = true;
     saveBtn.textContent = 'Saving…';
@@ -1180,6 +1263,7 @@
 
       closeModal();
       render();
+      refreshNotifBadge();
     }catch(err){
       alert(err.message);
     }finally{
@@ -1196,6 +1280,7 @@
       cars = cars.filter(c=>c.id!==editingId);
       closeModal();
       render();
+      refreshNotifBadge();
     }catch(err){
       alert(err.message);
     }
@@ -1414,7 +1499,7 @@
 
     const tokens = q.split(/\s+/).filter(t=>t.length>2);
     const matches = cars.filter(c=>{
-      const hay = [c.tag,c.vin,c.make,c.model,c.year,c.mechName,c.renter,c.tire,c.note].join(' ').toLowerCase();
+      const hay = [c.tag,c.vin,c.make,c.model,c.year,c.mechName,c.renter,c.tire,c.tireBrand,c.note].join(' ').toLowerCase();
       return tokens.some(t => hay.includes(t));
     });
     if(matches.length > 0){
@@ -1771,5 +1856,6 @@
 })();
 </script>
 <script src="/theme.js"></script>
+<script src="/notifications-badge.js"></script>
 </body>
 </html>

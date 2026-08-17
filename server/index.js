@@ -8,6 +8,7 @@ const { router: authRouter } = require('./auth');
 const { router: billingRouter, webhookHandler } = require('./billing');
 const fleetRouter = require('./fleet');
 const { router: maintenanceRouter } = require('./maintenance');
+const notificationsRouter = require('./notifications');
 
 const REQUIRED_ENV = [
   'JWT_SECRET',
@@ -40,6 +41,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/billing', billingRouter);
 app.use('/api/vehicles', fleetRouter);
 app.use('/api/maintenance', maintenanceRouter);
+app.use('/api/notifications', notificationsRouter);
 
 app.get('/', (req, res) => res.redirect('/login.html'));
 
