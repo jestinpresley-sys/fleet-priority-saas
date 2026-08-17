@@ -133,15 +133,15 @@
   .btn-sm{padding:6px 10px;font-size:12.5px;}
   .icon-btn{display:inline-flex;align-items:center;gap:7px;}
 
-  /* Wrench icon (Assistant) */
-  .wrench-icon{width:18px;height:18px;flex-shrink:0;transform-origin:71% 29%;animation:wrench-turn 2.2s ease-in-out infinite;}
-  .wrench-icon.busy{animation-duration:0.6s;}
-  .wrench-icon .eye{transform-box:fill-box;transform-origin:center;animation:socks-blink 4.2s ease-in-out infinite;}
-  @keyframes wrench-turn{
+  /* Lug nut icon (Assistant) */
+  .lugnut-icon{width:18px;height:18px;flex-shrink:0;transform-origin:50% 50%;animation:lugnut-turn 2.2s ease-in-out infinite;}
+  .lugnut-icon.busy{animation-duration:0.6s;}
+  .lugnut-icon .eye{transform-box:fill-box;transform-origin:center;animation:lugnut-blink 4.2s ease-in-out infinite;}
+  @keyframes lugnut-turn{
     0%,100%{transform:rotate(-12deg);}
     50%{transform:rotate(12deg);}
   }
-  @keyframes socks-blink{
+  @keyframes lugnut-blink{
     0%,90%,100%{transform:scaleY(1);}
     94%{transform:scaleY(0.12);}
   }
@@ -361,7 +361,7 @@
   }
   .asst-fab:hover{background:var(--btn-secondary-hover);transform:scale(1.06);}
   .asst-fab:active{transform:scale(0.95);}
-  .asst-fab .wrench-icon{width:32px;height:32px;}
+  .asst-fab .lugnut-icon{width:32px;height:32px;}
   .asst-fab.hidden{display:none;}
 
   /* Assistant panel */
@@ -381,7 +381,7 @@
     padding:16px 18px;border-bottom:1px solid var(--border);flex-shrink:0;
   }
   .asst-header h3{margin:0;font-size:15px;display:flex;align-items:center;gap:7px;}
-  .asst-header h3 .wrench-icon{width:24px;height:24px;}
+  .asst-header h3 .lugnut-icon{width:24px;height:24px;}
   .asst-header p{margin:2px 0 0;font-size:12px;color:var(--text-dim);}
   .asst-body{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px;}
   .asst-msg{max-width:88%;padding:10px 13px;border-radius:12px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;}
@@ -389,7 +389,7 @@
     background:var(--panel-2);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:3px;
     display:flex;align-items:flex-start;gap:8px;
   }
-  .asst-msg.bot .wrench-icon{margin-top:1px;}
+  .asst-msg.bot .lugnut-icon{margin-top:1px;}
   .asst-msg.user{background:var(--accent);color:#fff;align-self:flex-end;border-bottom-right-radius:3px;}
   .asst-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 18px 12px;flex-shrink:0;}
   .asst-chip{
@@ -672,14 +672,14 @@
 </div>
 
 <!-- Assistant -->
-<button class="asst-fab" id="asstFab" title="Socks — your fleet assistant" aria-label="Open Socks, your fleet assistant">
-  <svg class="wrench-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="13.3" y1="10.6" x2="6.2" y2="17.7" stroke-width="2.4"/><line x1="6.2" y1="17.7" x2="4.2" y2="19.7" stroke-width="2.4"/><circle cx="17" cy="7" r="5.4" fill="var(--panel)"/><path d="M14.1 5.1q1.3-1.6 2.6-0.3" stroke-width="1.2"/><path d="M17.8 4.8q1.3-1.3 2.6 0.1" stroke-width="1.2"/><circle class="eye" cx="15.5" cy="7.1" r="1.05" fill="currentColor" stroke="none"/><circle class="eye" cx="18.7" cy="7.1" r="1.05" fill="currentColor" stroke="none"/></svg>
+<button class="asst-fab" id="asstFab" title="Lugnut — your fleet assistant" aria-label="Open Lugnut, your fleet assistant">
+  <svg class="lugnut-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12,2.5 19.5,7 19.5,16 12,20.5 4.5,16 4.5,7" fill="var(--panel)" stroke-width="1.6"/><circle cx="12" cy="11.25" r="3.6" stroke-width="1.3"/><circle class="eye" cx="10.3" cy="10.5" r="0.95" fill="currentColor" stroke="none"/><circle class="eye" cx="13.7" cy="10.5" r="0.95" fill="currentColor" stroke="none"/><path d="M10.3 13.1q1.7 1.2 3.4 0" stroke-width="1"/></svg>
 </button>
 <div class="asst-overlay" id="asstOverlay">
   <div class="asst-panel">
     <div class="asst-header">
       <div>
-        <h3><svg class="wrench-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="13.3" y1="10.6" x2="6.2" y2="17.7" stroke-width="2.4"/><line x1="6.2" y1="17.7" x2="4.2" y2="19.7" stroke-width="2.4"/><circle cx="17" cy="7" r="5.4" fill="var(--panel)"/><path d="M14.1 5.1q1.3-1.6 2.6-0.3" stroke-width="1.2"/><path d="M17.8 4.8q1.3-1.3 2.6 0.1" stroke-width="1.2"/><circle class="eye" cx="15.5" cy="7.1" r="1.05" fill="currentColor" stroke="none"/><circle class="eye" cx="18.7" cy="7.1" r="1.05" fill="currentColor" stroke="none"/></svg>Socks</h3>
+        <h3><svg class="lugnut-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12,2.5 19.5,7 19.5,16 12,20.5 4.5,16 4.5,7" fill="var(--panel)" stroke-width="1.6"/><circle cx="12" cy="11.25" r="3.6" stroke-width="1.3"/><circle class="eye" cx="10.3" cy="10.5" r="0.95" fill="currentColor" stroke="none"/><circle class="eye" cx="13.7" cy="10.5" r="0.95" fill="currentColor" stroke="none"/><path d="M10.3 13.1q1.7 1.2 3.4 0" stroke-width="1"/></svg>Lugnut</h3>
         <p id="asstModeLabel">Ask about your fleet — no internet or API key needed</p>
       </div>
       <div style="display:flex;gap:2px;align-items:center;">
@@ -1610,7 +1610,7 @@
   const asstChips = document.getElementById('asstChips');
   const asstInput = document.getElementById('asstInput');
 
-  const SOCKS_ICON_SVG = '<svg class="wrench-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="13.3" y1="10.6" x2="6.2" y2="17.7" stroke-width="2.4"/><line x1="6.2" y1="17.7" x2="4.2" y2="19.7" stroke-width="2.4"/><circle cx="17" cy="7" r="5.4" fill="var(--panel)"/><path d="M14.1 5.1q1.3-1.6 2.6-0.3" stroke-width="1.2"/><path d="M17.8 4.8q1.3-1.3 2.6 0.1" stroke-width="1.2"/><circle class="eye" cx="15.5" cy="7.1" r="1.05" fill="currentColor" stroke="none"/><circle class="eye" cx="18.7" cy="7.1" r="1.05" fill="currentColor" stroke="none"/></svg>';
+  const LUGNUT_ICON_SVG = '<svg class="lugnut-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12,2.5 19.5,7 19.5,16 12,20.5 4.5,16 4.5,7" fill="var(--panel)" stroke-width="1.6"/><circle cx="12" cy="11.25" r="3.6" stroke-width="1.3"/><circle class="eye" cx="10.3" cy="10.5" r="0.95" fill="currentColor" stroke="none"/><circle class="eye" cx="13.7" cy="10.5" r="0.95" fill="currentColor" stroke="none"/><path d="M10.3 13.1q1.7 1.2 3.4 0" stroke-width="1"/></svg>';
 
   const SUGGESTIONS = [
     "Which cars aren't paid off?",
@@ -1774,7 +1774,7 @@
     const div = document.createElement('div');
     div.className = 'asst-msg ' + who;
     if(who === 'bot'){
-      div.innerHTML = SOCKS_ICON_SVG + '<span>' + escapeHtml(text) + '</span>';
+      div.innerHTML = LUGNUT_ICON_SVG + '<span>' + escapeHtml(text) + '</span>';
     }else{
       div.textContent = text;
     }
@@ -1786,7 +1786,7 @@
   function addAsstThinkingMsg(){
     const div = document.createElement('div');
     div.className = 'asst-msg bot';
-    div.innerHTML = SOCKS_ICON_SVG.replace('class="wrench-icon"', 'class="wrench-icon busy"') + '<span>Socks is thinking…</span>';
+    div.innerHTML = LUGNUT_ICON_SVG.replace('class="lugnut-icon"', 'class="lugnut-icon busy"') + '<span>Lugnut is thinking…</span>';
     asstBody.appendChild(div);
     asstBody.scrollTop = asstBody.scrollHeight;
     return div;
@@ -1893,7 +1893,7 @@
 
   async function askLocalAI(question){
     const systemPrompt =
-      "You are Socks, the fleet assistant built into Fleet Priority, a rental-car fleet management app. " +
+      "You are Lugnut, the fleet assistant built into Fleet Priority, a rental-car fleet management app. " +
       "Answer the user's question using ONLY the fleet data given below as JSON — never invent vehicles, mileage, or details that aren't there. " +
       "Be concise: a short paragraph or a compact bullet list. If the data doesn't answer the question, say so plainly.\n\n" +
       "Fleet data:\n" + JSON.stringify(buildFleetContext());
@@ -1928,10 +1928,10 @@
       const pending = addAsstThinkingMsg();
       try{
         const reply = await askLocalAI(val);
-        pending.querySelector('.wrench-icon').classList.remove('busy');
+        pending.querySelector('.lugnut-icon').classList.remove('busy');
         pending.querySelector('span').textContent = reply;
       }catch(err){
-        pending.querySelector('.wrench-icon').classList.remove('busy');
+        pending.querySelector('.lugnut-icon').classList.remove('busy');
         pending.querySelector('span').textContent = `Couldn't reach local AI (${err.message}) — showing the offline answer instead.\n\n${answerQuery(val)}`;
       }finally{
         asstInput.disabled = false;
@@ -1949,7 +1949,7 @@
     asstOverlay.classList.add('open');
     asstFab.classList.add('hidden');
     if(asstBody.children.length === 0){
-      addAsstMsg("Hi, I'm Socks! Ask me anything about your fleet — mileage, mechanics, tires, payoff status, and more.", 'bot');
+      addAsstMsg("Hi, I'm Lugnut! Ask me anything about your fleet — mileage, mechanics, tires, payoff status, and more.", 'bot');
       renderChips();
     }
     asstInput.focus();
@@ -1993,7 +1993,7 @@
   const TOUR_STEPS = [
     { selector: '#addBtn', title: 'Add vehicles', text: 'Start here to add a car — year, make, model, tag, mileage, tires, mechanic, and more.' },
     { selector: '.card', title: 'Vehicle cards', text: 'Click any card to view full details, add a photo, or edit it.' },
-    { selector: '#asstFab', title: 'Meet Socks', text: 'Ask plain-English questions about your fleet — mileage, mechanics, payoff status. Works fully offline, no API key needed.' },
+    { selector: '#asstFab', title: 'Meet Lugnut', text: 'Ask plain-English questions about your fleet — mileage, mechanics, payoff status. Works fully offline, no API key needed.' },
     { selector: '#exportBtn', title: 'Back up your data', text: 'Export saves your fleet as a file you can keep as a backup or move elsewhere.' },
     { selector: '#manageBillingBtn', title: 'Manage your plan', text: 'Update payment info, switch plans, or cancel your subscription any time from here.' },
   ];
