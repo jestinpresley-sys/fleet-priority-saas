@@ -316,6 +316,18 @@
   }
   .photo-actions{display:flex;flex-direction:column;gap:8px;}
   .photo-actions input[type=file]{font-size:12.5px;color:var(--text-dim);max-width:220px;}
+  .doc-upload{display:flex;flex-direction:column;gap:8px;}
+  .doc-upload input[type=file]{font-size:12.5px;color:var(--text-dim);}
+  .doc-current{display:flex;align-items:center;gap:10px;font-size:13px;}
+  .doc-current a{color:var(--accent);text-decoration:none;}
+  .doc-current a:hover{text-decoration:underline;}
+  .maint-receipt-link{color:var(--accent);text-decoration:none;font-size:12px;}
+  .maint-receipt-link:hover{text-decoration:underline;}
+  .maint-receipt-btn{
+    background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:6px;
+    font-size:11px;font-weight:600;padding:2px 7px;cursor:pointer;
+  }
+  .maint-receipt-btn:hover{background:var(--panel-2);color:var(--text);}
 
   .maint-note{color:var(--text-dim);font-size:12.5px;margin:0;}
   .maint-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
@@ -623,17 +635,28 @@
             <div class="field"><label>Next Due</label><input type="date" id="m_nextDue" title="Optional — set to get a notification reminder"></div>
             <button type="button" class="btn btn-secondary btn-sm" id="m_addBtn">Add</button>
           </div>
+          <input type="file" id="receiptFileInput" accept="application/pdf,image/png,image/jpeg,image/webp" style="display:none;">
         </div>
 
         <div class="section-label">Mechanic</div>
         <div class="field"><label>Preferred Mechanic / Shop</label><input type="text" id="f_mechName" placeholder="Joe's Auto Care"></div>
         <div class="field"><label>Mechanic Phone</label><input type="text" id="f_mechPhone" placeholder="(555) 123-4567"></div>
 
-        <div class="section-label">Rental &amp; Insurance</div>
-        <div class="field"><label>Current Renter</label><input type="text" id="f_renter" placeholder="Leave blank if not rented"></div>
+        <div class="section-label">Insurance</div>
         <div class="field" id="insProviderFieldWrap"><label>Insurance Provider</label><input type="text" id="f_insProvider" placeholder="Progressive"></div>
         <div class="field" id="insPolicyFieldWrap"><label>Insurance Policy #</label><input type="text" id="f_insPolicy" placeholder="POL-00000000"></div>
         <div class="field" id="insExpirationFieldWrap"><label>Insurance Expiration</label><input type="date" id="f_insExpiration"></div>
+        <div class="field full" id="insuranceDocFieldWrap">
+          <label>Insurance Policy Document (PDF or photo)</label>
+          <div class="doc-upload">
+            <div class="doc-current" id="insuranceDocCurrent" style="display:none;">
+              <a id="insuranceDocLink" href="#" target="_blank" rel="noopener">📎 <span id="insuranceDocName"></span></a>
+              <button type="button" class="btn btn-danger btn-sm" id="removeInsuranceDocBtn">Remove</button>
+            </div>
+            <input type="file" id="f_insuranceDoc" accept="application/pdf,image/png,image/jpeg,image/webp">
+            <p class="maint-note" id="insuranceDocPending" style="display:none;">Selected: <span id="insuranceDocPendingName"></span> — will upload when you save.</p>
+          </div>
+        </div>
         <p class="maint-note field full" id="proUpgradeNote" style="display:none;">VIN and insurance tracking are Pro features. <a href="/pricing.html" style="color:var(--accent);">Upgrade to Pro</a> to unlock them.</p>
 
       </div>
@@ -761,6 +784,52 @@
     photoPreview.style.display = 'none';
     photoPlaceholder.style.display = 'flex';
     removePhotoBtn.style.display = 'none';
+  });
+
+  /* ---------------- Insurance document (PDF or photo) ---------------- */
+  const fInsuranceDoc = document.getElementById('f_insuranceDoc');
+  const insuranceDocCurrent = document.getElementById('insuranceDocCurrent');
+  const insuranceDocLink = document.getElementById('insuranceDocLink');
+  const insuranceDocNameEl = document.getElementById('insuranceDocName');
+  const removeInsuranceDocBtn = document.getElementById('removeInsuranceDocBtn');
+  const insuranceDocPending = document.getElementById('insuranceDocPending');
+  const insuranceDocPendingName = document.getElementById('insuranceDocPendingName');
+
+  let selectedInsuranceDocFile = null;
+  let removeInsuranceDocRequested = false;
+
+  function resetInsuranceDocUI(){
+    selectedInsuranceDocFile = null;
+    removeInsuranceDocRequested = false;
+    fInsuranceDoc.value = '';
+    insuranceDocCurrent.style.display = 'none';
+    insuranceDocPending.style.display = 'none';
+  }
+  function showInsuranceDocCurrent(url, name){
+    insuranceDocLink.href = url;
+    insuranceDocNameEl.textContent = name || 'View document';
+    insuranceDocCurrent.style.display = 'flex';
+    insuranceDocPending.style.display = 'none';
+  }
+  function insuranceDocUrlFor(c){
+    return `/api/vehicles/${c.id}/insurance-doc?v=${encodeURIComponent(c.updatedAt || '')}`;
+  }
+
+  fInsuranceDoc.addEventListener('change', ()=>{
+    const file = fInsuranceDoc.files[0];
+    if(!file) return;
+    selectedInsuranceDocFile = file;
+    removeInsuranceDocRequested = false;
+    insuranceDocCurrent.style.display = 'none';
+    insuranceDocPendingName.textContent = file.name;
+    insuranceDocPending.style.display = 'block';
+  });
+  removeInsuranceDocBtn.addEventListener('click', ()=>{
+    selectedInsuranceDocFile = null;
+    removeInsuranceDocRequested = true;
+    fInsuranceDoc.value = '';
+    insuranceDocCurrent.style.display = 'none';
+    insuranceDocPending.style.display = 'none';
   });
 
   /* ---------------- API helper ---------------- */
@@ -993,7 +1062,7 @@
     let list = cars.filter(c=>{
       if(status && c.status !== status) return false;
       if(!q) return true;
-      const hay = [c.tag,c.vin,c.make,c.model,c.year,c.mechName,c.renter,c.tireBrand].join(' ').toLowerCase();
+      const hay = [c.tag,c.vin,c.make,c.model,c.year,c.mechName,c.tireBrand].join(' ').toLowerCase();
       return hay.includes(q);
     });
     const sortBy = sortSelect.value;
@@ -1120,7 +1189,6 @@
         <div class="card-row"><span>Tires</span><span>${[escapeHtml(c.tireBrand), escapeHtml(c.tire)].filter(Boolean).join(' ') || '—'}</span></div>
         <div class="card-row"><span>Paid Off</span><span><span class="paid-pill ${c.paidOff ? 'paid-yes':'paid-no'}">${c.paidOff ? 'Paid Off' : 'Financed'}</span></span></div>
         <div class="card-row"><span>Mechanic</span><span>${escapeHtml(c.mechName) || '—'}</span></div>
-        ${c.renter ? `<div class="card-row"><span>Renter</span><span>${escapeHtml(c.renter)}</span></div>` : ''}
         ${payoffBarHtml(c)}
         ${c.note ? `<div class="card-note">${escapeHtml(c.note)}</div>` : ''}
       `;
@@ -1152,7 +1220,7 @@
   const LOCKABLE_FIELD_IDS = [
     'f_year','f_make','f_model','f_tag','f_tagExpiration','f_vin','f_status','f_mileage',
     'f_tire','f_tireBrand','f_paidoff','f_loanTotal','f_loanRemaining','f_monthlyPayment',
-    'f_note','f_mechName','f_mechPhone','f_renter','f_insProvider','f_insPolicy','f_insExpiration',
+    'f_note','f_mechName','f_mechPhone','f_insProvider','f_insPolicy','f_insExpiration',
   ];
   const editVehicleBtn = document.getElementById('editVehicleBtn');
   function setFormEditable(editable){
@@ -1169,6 +1237,7 @@
     editingId = id || null;
     carForm.reset();
     resetPhotoUI();
+    resetInsuranceDocUI();
     if(id){
       const c = cars.find(x=>x.id===id);
       if(!c) return;
@@ -1176,6 +1245,9 @@
       deleteBtn.style.display = 'inline-block';
       if(c.imagePath){
         showPhotoPreview(imageUrlFor(c));
+      }
+      if(c.insuranceDocPath){
+        showInsuranceDocCurrent(insuranceDocUrlFor(c), c.insuranceDocName);
       }
       document.getElementById('f_year').value = c.year || '';
       document.getElementById('f_make').value = c.make || '';
@@ -1197,7 +1269,6 @@
       document.getElementById('f_note').value = c.note || '';
       document.getElementById('f_mechName').value = c.mechName || '';
       document.getElementById('f_mechPhone').value = c.mechPhone || '';
-      document.getElementById('f_renter').value = c.renter || '';
       document.getElementById('f_insProvider').value = c.insProvider || '';
       document.getElementById('f_insPolicy').value = c.insPolicy || '';
       document.getElementById('f_insExpiration').value = c.insExpiration || '';
@@ -1213,6 +1284,7 @@
     document.getElementById('insProviderFieldWrap').style.display = pro ? '' : 'none';
     document.getElementById('insPolicyFieldWrap').style.display = pro ? '' : 'none';
     document.getElementById('insExpirationFieldWrap').style.display = pro ? '' : 'none';
+    document.getElementById('insuranceDocFieldWrap').style.display = pro ? '' : 'none';
     document.getElementById('proUpgradeNote').style.display = pro ? 'none' : 'block';
     refreshMaintenanceUI(id);
     updatePayoffPreview();
@@ -1233,6 +1305,10 @@
     return '$' + num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  function receiptUrlFor(r){
+    return `/api/maintenance/${r.id}/receipt?v=${encodeURIComponent(r.createdAt || '')}`;
+  }
+
   function renderMaintenanceList(records){
     if(!records || records.length === 0){
       maintenanceListEl.innerHTML = '<p class="maint-note">No maintenance logged yet.</p>';
@@ -1246,12 +1322,54 @@
         <span class="m-cost">${maintCostFmt(r.cost)}</span>
         <span class="m-mileage">${r.mileage ? Number(r.mileage).toLocaleString()+' mi' : ''}</span>
         <span class="m-mileage">${r.nextDue ? 'Next: '+escapeHtml(r.nextDue) : ''}</span>
+        ${r.receiptPath
+          ? `<a class="maint-receipt-link" href="${receiptUrlFor(r)}" target="_blank" rel="noopener" title="${escapeHtml(r.receiptName || 'Receipt')}">📎</a>
+             <button type="button" class="maint-receipt-btn" data-id="${r.id}" data-action="remove-receipt" title="Remove receipt">✕📎</button>`
+          : `<button type="button" class="maint-receipt-btn" data-id="${r.id}" data-action="add-receipt" title="Attach receipt">📎+</button>`
+        }
         <button type="button" class="m-del" data-id="${r.id}" title="Delete record">✕</button>
       </div>
     `).join('');
     maintenanceListEl.querySelectorAll('.m-del').forEach(btn=>{
       btn.addEventListener('click', ()=> deleteMaintenanceRecord(btn.getAttribute('data-id')));
     });
+    maintenanceListEl.querySelectorAll('[data-action="add-receipt"]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        receiptTargetId = btn.getAttribute('data-id');
+        receiptFileInput.click();
+      });
+    });
+    maintenanceListEl.querySelectorAll('[data-action="remove-receipt"]').forEach(btn=>{
+      btn.addEventListener('click', ()=> removeMaintenanceReceipt(btn.getAttribute('data-id')));
+    });
+  }
+
+  let receiptTargetId = null;
+  const receiptFileInput = document.getElementById('receiptFileInput');
+  receiptFileInput.addEventListener('change', async ()=>{
+    const file = receiptFileInput.files[0];
+    const targetId = receiptTargetId;
+    receiptFileInput.value = '';
+    if(!file || !targetId) return;
+    try{
+      const fd = new FormData();
+      fd.append('receipt', file);
+      const res = await fetch(`/api/maintenance/${targetId}/receipt`, { method:'POST', body: fd });
+      const data = await res.json().catch(()=>({}));
+      if(!res.ok) throw new Error((data && data.error) || 'Could not attach receipt.');
+      refreshMaintenanceUI(editingId);
+    }catch(err){
+      alert(err.message);
+    }
+  });
+
+  async function removeMaintenanceReceipt(id){
+    try{
+      await api(`/api/maintenance/${id}/receipt`, { method:'DELETE' });
+      refreshMaintenanceUI(editingId);
+    }catch(err){
+      alert(err.message);
+    }
   }
 
   async function refreshMaintenanceUI(vehicleId){
@@ -1343,7 +1461,6 @@
       note: document.getElementById('f_note').value.trim(),
       mechName: document.getElementById('f_mechName').value.trim(),
       mechPhone: document.getElementById('f_mechPhone').value.trim(),
-      renter: document.getElementById('f_renter').value.trim(),
     };
     if(isPro()){
       data.vin = document.getElementById('f_vin').value.trim();
@@ -1385,6 +1502,30 @@
           }
         }catch(imgErr){
           alert('Vehicle saved, but the photo could not be saved: ' + imgErr.message);
+        }
+      }
+
+      // Insurance document is uploaded separately (multipart) too, same as the photo.
+      if(isPro() && (selectedInsuranceDocFile || removeInsuranceDocRequested)){
+        saveBtn.textContent = 'Saving document…';
+        try{
+          let docRes, docData;
+          if(selectedInsuranceDocFile){
+            const fd = new FormData();
+            fd.append('doc', selectedInsuranceDocFile);
+            docRes = await fetch(`/api/vehicles/${vehicle.id}/insurance-doc`, { method:'POST', body: fd });
+          }else{
+            docRes = await fetch(`/api/vehicles/${vehicle.id}/insurance-doc`, { method:'DELETE' });
+          }
+          docData = await docRes.json().catch(()=>({}));
+          if(docRes.ok && docData.vehicle){
+            const idx3 = cars.findIndex(c=>c.id===vehicle.id);
+            if(idx3>-1) cars[idx3] = docData.vehicle;
+          }else if(!docRes.ok){
+            alert((docData && docData.error) || 'Vehicle saved, but the document could not be saved.');
+          }
+        }catch(docErr){
+          alert('Vehicle saved, but the document could not be saved: ' + docErr.message);
         }
       }
 
@@ -1494,7 +1635,6 @@
       `Paid off: ${c.paidOff ? 'Yes' : 'No'}`,
       c.note ? `Note: ${c.note}` : null,
       `Mechanic: ${c.mechName || '—'}${c.mechPhone ? ' ('+c.mechPhone+')' : ''}`,
-      c.renter ? `Renter: ${c.renter}` : null,
       c.vin ? `VIN: ${c.vin}` : null,
       (c.insProvider || c.insPolicy) ? `Insurance: ${c.insProvider || ''} ${c.insPolicy ? '#'+c.insPolicy : ''}`.trim() : null,
     ].filter(Boolean).join('\n');
@@ -1614,19 +1754,13 @@
       return withIns.map(c=>`${carLine(c)}: ${c.insProvider}${c.insPolicy ? ' (#'+c.insPolicy+')' : ''}`).join('\n');
     }
 
-    if(/renter|who has|rented (out|by)/.test(q)){
-      const withRenter = list.filter(c=>c.renter);
-      if(withRenter.length===0) return "No current renters recorded.";
-      return withRenter.map(c=>`${carLine(c)}: ${c.renter}`).join('\n');
-    }
-
     if(noun !== 'vehicles'){
       return listOrCount(list, noun);
     }
 
     const tokens = q.split(/\s+/).filter(t=>t.length>2);
     const matches = cars.filter(c=>{
-      const hay = [c.tag,c.vin,c.make,c.model,c.year,c.mechName,c.renter,c.tire,c.tireBrand,c.note].join(' ').toLowerCase();
+      const hay = [c.tag,c.vin,c.make,c.model,c.year,c.mechName,c.tire,c.tireBrand,c.note].join(' ').toLowerCase();
       return tokens.some(t => hay.includes(t));
     });
     if(matches.length > 0){
@@ -1753,7 +1887,7 @@
       year: c.year, make: c.make, model: c.model, tag: c.tag, vin: c.vin,
       status: c.status, mileage: c.mileage, tire: c.tire, paidOff: c.paidOff,
       note: c.note, mechName: c.mechName, mechPhone: c.mechPhone,
-      renter: c.renter, insProvider: c.insProvider, insPolicy: c.insPolicy,
+      insProvider: c.insProvider, insPolicy: c.insPolicy,
     }));
   }
 
@@ -1847,7 +1981,7 @@
         paidOff: false,
         note: 'This is a sample vehicle so you can see how a card looks. Edit or delete it any time.',
         mechName: "Joe's Auto Care", mechPhone: '(555) 123-4567',
-        renter: '', insProvider: '', insPolicy: '',
+        insProvider: '', insPolicy: '',
       })});
       cars.push(vehicle);
       render();

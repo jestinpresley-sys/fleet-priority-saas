@@ -1,9 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const express = require('express');
-const multer = require('multer');
 const { requireAuth, requireActiveSub } = require('./auth');
+const { UPLOAD_DIR, uploadImage, uploadDoc, removeUploadedFile } = require('./uploads');
 const db = require('./db');
 
 // Vehicle-count ceiling per plan. Adjust to match what you sell in Stripe.
@@ -16,12 +15,13 @@ const PRO_ONLY_FIELDS = ['vin', 'insProvider', 'insPolicy', 'insExpiration'];
 
 const FIELDS = [
   'tag', 'tagExpiration', 'vin', 'year', 'make', 'model', 'status', 'mileage', 'tire', 'tireBrand',
-  'paidOff', 'loanTotal', 'loanRemaining', 'monthlyPayment', 'note', 'mechName', 'mechPhone', 'renter',
+  'paidOff', 'loanTotal', 'loanRemaining', 'monthlyPayment', 'note', 'mechName', 'mechPhone',
   'insProvider', 'insPolicy', 'insExpiration',
 ];
-// Note: 'imagePath' is intentionally excluded from FIELDS — it's only ever
-// set through the dedicated image upload/delete routes below, never through
-// the generic JSON create/update body.
+// Note: 'imagePath', 'insuranceDocPath', and 'insuranceDocName' are
+// intentionally excluded from FIELDS — they're only ever set through their
+// dedicated upload/delete routes below, never through the generic JSON
+// create/update body.
 // Note: 'loanAsOfDate' is intentionally excluded from FIELDS too — it's a
 // server-stamped anchor (see stampLoanAsOfDate below), not something a
 // client can set directly.
@@ -47,40 +47,6 @@ function stampLoanAsOfDate(data, existing) {
   const hasAnchorAlready = !!(existing && existing.loanAsOfDate);
   if (remainingChanged || (monthlySet && !hasAnchorAlready)) {
     data.loanAsOfDate = new Date().toISOString().slice(0, 10);
-  }
-}
-
-/* ---------------- Photo storage ---------------- */
-// Same DATA_DIR override as server/db.js — keeps uploads on the same
-// persistent disk as the database in production.
-const UPLOAD_DIR = path.join(process.env.DATA_DIR || path.join(__dirname, '..', 'data'), 'uploads');
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-
-const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const EXT_BY_MIME = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' };
-
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, UPLOAD_DIR),
-    filename: (req, file, cb) => {
-      const ext = EXT_BY_MIME[file.mimetype] || path.extname(file.originalname || '').toLowerCase() || '.jpg';
-      cb(null, `${crypto.randomUUID()}${ext}`);
-    },
-  }),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: (req, file, cb) => {
-    if (!ALLOWED_MIME.includes(file.mimetype)) {
-      return cb(new Error('INVALID_FILE_TYPE'));
-    }
-    cb(null, true);
-  },
-});
-
-function removeImageFile(imagePath) {
-  if (!imagePath) return;
-  const full = path.join(UPLOAD_DIR, imagePath);
-  if (fs.existsSync(full)) {
-    try { fs.unlinkSync(full); } catch (e) { console.error('Could not remove image file:', e.message); }
   }
 }
 
@@ -118,7 +84,11 @@ router.delete('/:id', (req, res) => {
   const existing = db.getVehicle(req.user.id, req.params.id);
   const ok = db.deleteVehicle(req.user.id, req.params.id);
   if (!ok) return res.status(404).json({ error: 'Vehicle not found.' });
-  if (existing) removeImageFile(existing.imagePath);
+  if (existing) {
+    removeUploadedFile(existing.imagePath);
+    removeUploadedFile(existing.insuranceDocPath);
+  }
+  db.listMaintenanceForVehicle(req.user.id, req.params.id).forEach((r) => removeUploadedFile(r.receiptPath));
   db.deleteMaintenanceForVehicle(req.user.id, req.params.id);
   res.json({ ok: true });
 });
@@ -136,16 +106,16 @@ router.get('/:id/maintenance', (req, res) => {
 /* ---------------- Photo endpoints ---------------- */
 
 // Upload/replace a vehicle's photo.
-router.post('/:id/image', upload.single('image'), (req, res) => {
+router.post('/:id/image', uploadImage.single('image'), (req, res) => {
   const vehicle = db.getVehicle(req.user.id, req.params.id);
   if (!vehicle) {
-    if (req.file) removeImageFile(req.file.filename);
+    if (req.file) removeUploadedFile(req.file.filename);
     return res.status(404).json({ error: 'Vehicle not found.' });
   }
   if (!req.file) {
     return res.status(400).json({ error: 'No image file provided.' });
   }
-  removeImageFile(vehicle.imagePath);
+  removeUploadedFile(vehicle.imagePath);
   const updated = db.updateVehicle(req.user.id, req.params.id, { imagePath: req.file.filename });
   res.json({ vehicle: updated });
 });
@@ -154,7 +124,7 @@ router.post('/:id/image', upload.single('image'), (req, res) => {
 router.delete('/:id/image', (req, res) => {
   const vehicle = db.getVehicle(req.user.id, req.params.id);
   if (!vehicle) return res.status(404).json({ error: 'Vehicle not found.' });
-  removeImageFile(vehicle.imagePath);
+  removeUploadedFile(vehicle.imagePath);
   const updated = db.updateVehicle(req.user.id, req.params.id, { imagePath: null });
   res.json({ vehicle: updated });
 });
@@ -164,6 +134,48 @@ router.get('/:id/image', (req, res) => {
   const vehicle = db.getVehicle(req.user.id, req.params.id);
   if (!vehicle || !vehicle.imagePath) return res.status(404).end();
   const full = path.join(UPLOAD_DIR, vehicle.imagePath);
+  if (!fs.existsSync(full)) return res.status(404).end();
+  res.sendFile(full);
+});
+
+/* ---------------- Insurance document endpoints (Pro-only, like the rest of insurance tracking) ---------------- */
+
+// Upload/replace a vehicle's insurance policy document (PDF or image).
+router.post('/:id/insurance-doc', uploadDoc.single('doc'), (req, res) => {
+  const vehicle = db.getVehicle(req.user.id, req.params.id);
+  if (!vehicle) {
+    if (req.file) removeUploadedFile(req.file.filename);
+    return res.status(404).json({ error: 'Vehicle not found.' });
+  }
+  if (req.user.plan !== 'pro') {
+    if (req.file) removeUploadedFile(req.file.filename);
+    return res.status(403).json({ error: 'Insurance document uploads are a Pro feature.' });
+  }
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file provided.' });
+  }
+  removeUploadedFile(vehicle.insuranceDocPath);
+  const updated = db.updateVehicle(req.user.id, req.params.id, {
+    insuranceDocPath: req.file.filename,
+    insuranceDocName: req.file.originalname,
+  });
+  res.json({ vehicle: updated });
+});
+
+// Remove a vehicle's insurance document.
+router.delete('/:id/insurance-doc', (req, res) => {
+  const vehicle = db.getVehicle(req.user.id, req.params.id);
+  if (!vehicle) return res.status(404).json({ error: 'Vehicle not found.' });
+  removeUploadedFile(vehicle.insuranceDocPath);
+  const updated = db.updateVehicle(req.user.id, req.params.id, { insuranceDocPath: null, insuranceDocName: null });
+  res.json({ vehicle: updated });
+});
+
+// Serve a vehicle's insurance document — gated behind auth + ownership.
+router.get('/:id/insurance-doc', (req, res) => {
+  const vehicle = db.getVehicle(req.user.id, req.params.id);
+  if (!vehicle || !vehicle.insuranceDocPath) return res.status(404).end();
+  const full = path.join(UPLOAD_DIR, vehicle.insuranceDocPath);
   if (!fs.existsSync(full)) return res.status(404).end();
   res.sendFile(full);
 });
