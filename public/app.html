@@ -1024,7 +1024,7 @@
       chartEl.innerHTML = '';
       return;
     }
-    const totalSpend = records.reduce((s,r)=> s + (Number(r.cost) || 0), 0);
+    const totalSpend = records.filter(r => r.type !== 'Gas').reduce((s,r)=> s + (Number(r.cost) || 0), 0);
     const oilRecords = records.filter(r => r.type === 'Oil Change');
     const avgOil = oilRecords.length ? oilRecords.reduce((s,r)=> s + (Number(r.cost) || 0), 0) / oilRecords.length : 0;
     statsEl.innerHTML = `

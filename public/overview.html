@@ -349,7 +349,7 @@
   function renderStats(vehicles, records){
     const totalVehicles = vehicles.length;
     const totalMileage = vehicles.reduce((s,v)=> s + (Number(v.mileage) || 0), 0);
-    const totalSpend = records.reduce((s,r)=> s + (Number(r.cost) || 0), 0);
+    const totalSpend = records.filter(r => r.type !== 'Gas').reduce((s,r)=> s + (Number(r.cost) || 0), 0);
     const oilRecords = records.filter(r => r.type === 'Oil Change');
     const oilSpend = oilRecords.reduce((s,r)=> s + (Number(r.cost) || 0), 0);
     const avgOil = oilRecords.length ? oilSpend / oilRecords.length : 0;
