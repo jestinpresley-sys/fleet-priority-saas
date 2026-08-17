@@ -24,18 +24,35 @@ function ensureDB() {
 }
 ensureDB();
 
-function readRaw() {
-  const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-  // Defensive: older db.json files predate the maintenance log feature.
-  if (!Array.isArray(db.maintenance)) db.maintenance = [];
-  return db;
+// The whole DB is kept in memory after the first load and mutated in place —
+// every read and write below goes through this single object, never a fresh
+// disk read. That's what keeps things correct: disk writes are queued and
+// happen asynchronously (see persist() below), so a function that reads the
+// file fresh from disk mid-request could read a stale snapshot from before
+// an earlier write in the same request had actually flushed, then write
+// that stale snapshot back and silently undo the earlier change — which is
+// exactly what used to happen when deleting a vehicle also cascaded into
+// deleting its maintenance records (two separate read-modify-write cycles,
+// one clobbering the other). Keeping one shared in-memory copy makes every
+// mutation immediately visible to the next one, regardless of disk timing.
+let cache = null;
+function db() {
+  if (!cache) {
+    cache = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    // Defensive: older db.json files predate the maintenance log feature.
+    if (!Array.isArray(cache.maintenance)) cache.maintenance = [];
+  }
+  return cache;
 }
 
-// Serialize writes so concurrent requests can't clobber each other.
+// Serialize writes so they hit disk in order. Reads always come from the
+// in-memory cache above, not this file, so persist() doesn't need to be
+// awaited for correctness — it's just making sure the on-disk copy catches
+// up, in the order changes actually happened.
 let writeQueue = Promise.resolve();
-function writeRaw(data) {
+function persist() {
   writeQueue = writeQueue.then(
-    () => fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2))
+    () => fs.writeFileSync(DB_FILE, JSON.stringify(cache, null, 2))
   );
   return writeQueue;
 }
@@ -43,16 +60,15 @@ function writeRaw(data) {
 /* ---------------- Users ---------------- */
 
 function getUserByEmail(email) {
-  return readRaw().users.find((u) => u.email === email) || null;
+  return db().users.find((u) => u.email === email) || null;
 }
 function getUserById(id) {
-  return readRaw().users.find((u) => u.id === id) || null;
+  return db().users.find((u) => u.id === id) || null;
 }
 function getUserByStripeCustomerId(customerId) {
-  return readRaw().users.find((u) => u.stripeCustomerId === customerId) || null;
+  return db().users.find((u) => u.stripeCustomerId === customerId) || null;
 }
 function createUser({ email, passwordHash }) {
-  const db = readRaw();
   const user = {
     id: crypto.randomUUID(),
     email,
@@ -63,32 +79,31 @@ function createUser({ email, passwordHash }) {
     plan: null, // 'basic' | 'pro'
     createdAt: new Date().toISOString(),
   };
-  db.users.push(user);
-  writeRaw(db);
+  db().users.push(user);
+  persist();
   return user;
 }
 function updateUser(id, patch) {
-  const db = readRaw();
-  const idx = db.users.findIndex((u) => u.id === id);
+  const users = db().users;
+  const idx = users.findIndex((u) => u.id === id);
   if (idx === -1) return null;
-  db.users[idx] = { ...db.users[idx], ...patch };
-  writeRaw(db);
-  return db.users[idx];
+  users[idx] = { ...users[idx], ...patch };
+  persist();
+  return users[idx];
 }
 
 /* ---------------- Vehicles ---------------- */
 
 function listVehicles(userId) {
-  return readRaw().vehicles.filter((v) => v.userId === userId);
+  return db().vehicles.filter((v) => v.userId === userId);
 }
 function getVehicle(userId, id) {
-  return readRaw().vehicles.find((v) => v.id === id && v.userId === userId) || null;
+  return db().vehicles.find((v) => v.id === id && v.userId === userId) || null;
 }
 function countVehicles(userId) {
   return listVehicles(userId).length;
 }
 function createVehicle(userId, data) {
-  const db = readRaw();
   const vehicle = {
     id: crypto.randomUUID(),
     userId,
@@ -96,68 +111,67 @@ function createVehicle(userId, data) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  db.vehicles.push(vehicle);
-  writeRaw(db);
+  db().vehicles.push(vehicle);
+  persist();
   return vehicle;
 }
 function updateVehicle(userId, id, patch) {
-  const db = readRaw();
-  const idx = db.vehicles.findIndex((v) => v.id === id && v.userId === userId);
+  const vehicles = db().vehicles;
+  const idx = vehicles.findIndex((v) => v.id === id && v.userId === userId);
   if (idx === -1) return null;
-  db.vehicles[idx] = { ...db.vehicles[idx], ...patch, updatedAt: new Date().toISOString() };
-  writeRaw(db);
-  return db.vehicles[idx];
+  vehicles[idx] = { ...vehicles[idx], ...patch, updatedAt: new Date().toISOString() };
+  persist();
+  return vehicles[idx];
 }
 function deleteVehicle(userId, id) {
-  const db = readRaw();
-  const before = db.vehicles.length;
-  db.vehicles = db.vehicles.filter((v) => !(v.id === id && v.userId === userId));
-  writeRaw(db);
-  return db.vehicles.length < before;
+  const data = db();
+  const before = data.vehicles.length;
+  data.vehicles = data.vehicles.filter((v) => !(v.id === id && v.userId === userId));
+  persist();
+  return data.vehicles.length < before;
 }
 
 /* ---------------- Maintenance records ---------------- */
 
 function listMaintenance(userId) {
-  return readRaw().maintenance.filter((m) => m.userId === userId);
+  return db().maintenance.filter((m) => m.userId === userId);
 }
 function listMaintenanceForVehicle(userId, vehicleId) {
   return listMaintenance(userId).filter((m) => m.vehicleId === vehicleId);
 }
 function getMaintenance(userId, id) {
-  return readRaw().maintenance.find((m) => m.id === id && m.userId === userId) || null;
+  return db().maintenance.find((m) => m.id === id && m.userId === userId) || null;
 }
 function createMaintenance(userId, data) {
-  const db = readRaw();
   const record = {
     id: crypto.randomUUID(),
     userId,
     ...data,
     createdAt: new Date().toISOString(),
   };
-  db.maintenance.push(record);
-  writeRaw(db);
+  db().maintenance.push(record);
+  persist();
   return record;
 }
 function updateMaintenance(userId, id, patch) {
-  const db = readRaw();
-  const idx = db.maintenance.findIndex((m) => m.id === id && m.userId === userId);
+  const records = db().maintenance;
+  const idx = records.findIndex((m) => m.id === id && m.userId === userId);
   if (idx === -1) return null;
-  db.maintenance[idx] = { ...db.maintenance[idx], ...patch };
-  writeRaw(db);
-  return db.maintenance[idx];
+  records[idx] = { ...records[idx], ...patch };
+  persist();
+  return records[idx];
 }
 function deleteMaintenance(userId, id) {
-  const db = readRaw();
-  const before = db.maintenance.length;
-  db.maintenance = db.maintenance.filter((m) => !(m.id === id && m.userId === userId));
-  writeRaw(db);
-  return db.maintenance.length < before;
+  const data = db();
+  const before = data.maintenance.length;
+  data.maintenance = data.maintenance.filter((m) => !(m.id === id && m.userId === userId));
+  persist();
+  return data.maintenance.length < before;
 }
 function deleteMaintenanceForVehicle(userId, vehicleId) {
-  const db = readRaw();
-  db.maintenance = db.maintenance.filter((m) => !(m.vehicleId === vehicleId && m.userId === userId));
-  writeRaw(db);
+  const data = db();
+  data.maintenance = data.maintenance.filter((m) => !(m.vehicleId === vehicleId && m.userId === userId));
+  persist();
 }
 
 module.exports = {
