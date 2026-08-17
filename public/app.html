@@ -621,6 +621,7 @@
             <div class="field"><label>Type</label>
               <select id="m_type">
                 <option>Oil Change</option>
+                <option>Gas</option>
                 <option>Tires</option>
                 <option>Brakes</option>
                 <option>Battery</option>
@@ -636,6 +637,10 @@
             <button type="button" class="btn btn-secondary btn-sm" id="m_addBtn">Add</button>
           </div>
           <input type="file" id="receiptFileInput" accept="application/pdf,image/png,image/jpeg,image/webp" style="display:none;">
+        </div>
+        <div class="field full" id="vehicleGasTrendWrap" style="display:none;">
+          <label>Gas Trend (this vehicle)</label>
+          <div id="vehicleGasTrendChart"></div>
         </div>
 
         <div class="section-label">Mechanic</div>
@@ -936,7 +941,9 @@
     return Object.keys(byMonth).sort().map(m => byMonth[m].sum / byMonth[m].count);
   }
 
-  function sparklineSvg(values){
+  function sparklineSvg(values, color, label){
+    color = color || 'var(--amber)';
+    label = label || 'Oil change cost trend';
     const w = 160, h = 44, pad = 5;
     const min = Math.min(...values), max = Math.max(...values);
     const range = (max - min) || 1;
@@ -948,10 +955,35 @@
     };
     const points = values.map((v,i)=> pt(v,i).map(n=>n.toFixed(1)).join(',')).join(' ');
     const [lastX, lastY] = pt(values[values.length-1], values.length-1);
-    return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-label="Oil change cost trend">` +
-      `<polyline points="${points}" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>` +
-      `<circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="2.5" fill="var(--amber)"/>` +
+    return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-label="${escapeHtml(label)}">` +
+      `<polyline points="${points}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>` +
+      `<circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="2.5" fill="${color}"/>` +
     `</svg>`;
+  }
+
+  function buildVehicleTrend(records, type){
+    const filtered = records.filter(r => r.type === type && r.date);
+    const byMonth = {};
+    filtered.forEach(r=>{
+      const month = r.date.slice(0,7);
+      if(!byMonth[month]) byMonth[month] = { sum: 0, count: 0 };
+      byMonth[month].sum += Number(r.cost) || 0;
+      byMonth[month].count += 1;
+    });
+    return Object.keys(byMonth).sort().map(m => byMonth[m].sum / byMonth[m].count);
+  }
+
+  function renderVehicleGasTrend(records){
+    const wrap = document.getElementById('vehicleGasTrendWrap');
+    const chartEl = document.getElementById('vehicleGasTrendChart');
+    const trend = buildVehicleTrend(records, 'Gas');
+    if(trend.length < 2){
+      wrap.style.display = 'block';
+      chartEl.innerHTML = '<p class="maint-note">Log a couple gas fill-ups on this vehicle to see the trend.</p>';
+      return;
+    }
+    wrap.style.display = 'block';
+    chartEl.innerHTML = sparklineSvg(trend, 'var(--accent)', 'Gas cost trend for this vehicle');
   }
 
   function renderOverviewPreview(records){
@@ -1377,6 +1409,7 @@
       maintenanceEmptyNote.style.display = 'block';
       maintenanceListEl.innerHTML = '';
       maintenanceAddRow.style.display = 'none';
+      document.getElementById('vehicleGasTrendWrap').style.display = 'none';
       return;
     }
     maintenanceEmptyNote.style.display = 'none';
@@ -1385,6 +1418,7 @@
     try{
       const { records } = await api(`/api/vehicles/${vehicleId}/maintenance`);
       renderMaintenanceList(records);
+      renderVehicleGasTrend(records);
     }catch(err){
       maintenanceListEl.innerHTML = '<p class="maint-note">Could not load maintenance history.</p>';
     }

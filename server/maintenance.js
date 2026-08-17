@@ -5,7 +5,7 @@ const { requireAuth, requireActiveSub } = require('./auth');
 const { UPLOAD_DIR, uploadDoc, removeUploadedFile } = require('./uploads');
 const db = require('./db');
 
-const SERVICE_TYPES = ['Oil Change', 'Tires', 'Brakes', 'Battery', 'Inspection', 'Repair', 'Other'];
+const SERVICE_TYPES = ['Oil Change', 'Gas', 'Tires', 'Brakes', 'Battery', 'Inspection', 'Repair', 'Other'];
 
 const router = express.Router();
 router.use(requireAuth, requireActiveSub);

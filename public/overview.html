@@ -128,6 +128,7 @@
   .stat .label{font-size:12px;color:var(--text-dim);margin-top:2px;}
   .stat.spend .num{color:var(--green);}
   .stat.oil .num{color:var(--amber);}
+  .stat.gas .num{color:var(--accent);}
 
   .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:24px;}
   .chart-card{
@@ -217,6 +218,11 @@
         <h3>Oil change cost trend</h3>
         <p class="sub">Average oil change cost by month, across the fleet.</p>
         <div class="chart-wrap" id="oilChartWrap"><canvas id="oilChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Gas cost trend</h3>
+        <p class="sub">Average fill-up cost by month, across the fleet.</p>
+        <div class="chart-wrap" id="gasChartWrap"><canvas id="gasChart"></canvas></div>
       </div>
     </div>
 
@@ -324,6 +330,22 @@
     };
   }
 
+  function buildGasTrend(records){
+    const gas = records.filter(r => r.type === 'Gas' && r.date);
+    const byMonth = {};
+    gas.forEach(r=>{
+      const month = r.date.slice(0,7);
+      if(!byMonth[month]) byMonth[month] = { sum: 0, count: 0 };
+      byMonth[month].sum += Number(r.cost) || 0;
+      byMonth[month].count += 1;
+    });
+    const months = Object.keys(byMonth).sort();
+    return {
+      labels: months,
+      values: months.map(m => Math.round((byMonth[m].sum / byMonth[m].count) * 100) / 100),
+    };
+  }
+
   function renderStats(vehicles, records){
     const totalVehicles = vehicles.length;
     const totalMileage = vehicles.reduce((s,v)=> s + (Number(v.mileage) || 0), 0);
@@ -331,6 +353,9 @@
     const oilRecords = records.filter(r => r.type === 'Oil Change');
     const oilSpend = oilRecords.reduce((s,r)=> s + (Number(r.cost) || 0), 0);
     const avgOil = oilRecords.length ? oilSpend / oilRecords.length : 0;
+    const gasRecords = records.filter(r => r.type === 'Gas');
+    const gasSpend = gasRecords.reduce((s,r)=> s + (Number(r.cost) || 0), 0);
+    const avgGas = gasRecords.length ? gasSpend / gasRecords.length : 0;
 
     document.getElementById('stats').innerHTML = `
       <div class="stat"><div class="num">${totalVehicles}</div><div class="label">Total vehicles</div></div>
@@ -338,6 +363,8 @@
       <div class="stat spend"><div class="num">${money(totalSpend)}</div><div class="label">Total maintenance spend</div></div>
       <div class="stat oil"><div class="num">${money(oilSpend)}</div><div class="label">Total oil change spend</div></div>
       <div class="stat oil"><div class="num">${money(avgOil)}</div><div class="label">Avg. cost per oil change</div></div>
+      <div class="stat gas"><div class="num">${money(gasSpend)}</div><div class="label">Total gas spend</div></div>
+      <div class="stat gas"><div class="num">${money(avgGas)}</div><div class="label">Avg. cost per fill-up</div></div>
     `;
   }
 
@@ -347,8 +374,10 @@
 
   let spendChartInstance = null;
   let oilChartInstance = null;
+  let gasChartInstance = null;
   let lastSpendTotals = null;
   let lastOilTrend = null;
+  let lastGasTrend = null;
 
   function renderSpendChart(totals){
     lastSpendTotals = totals;
@@ -425,9 +454,49 @@
     });
   }
 
+  function renderGasChart(trend){
+    lastGasTrend = trend;
+    const wrap = document.getElementById('gasChartWrap');
+    if(gasChartInstance){ gasChartInstance.destroy(); gasChartInstance = null; }
+    if(trend.labels.length === 0){
+      wrap.innerHTML = '<div class="chart-empty">No gas records yet — log a few fill-ups to see the cost trend over time.</div>';
+      return;
+    }
+    wrap.innerHTML = '<canvas id="gasChart"></canvas>';
+    const ctx = document.getElementById('gasChart').getContext('2d');
+    const textDim = cssVar('--text-dim');
+    const border = cssVar('--border');
+    const accent = cssVar('--accent');
+    gasChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: trend.labels,
+        datasets: [{
+          label: 'Avg. fill-up cost',
+          data: trend.values,
+          borderColor: accent,
+          backgroundColor: accent + '26',
+          tension: 0.25,
+          fill: true,
+          pointRadius: 3,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: textDim }, grid: { color: border } },
+          y: { ticks: { color: textDim }, grid: { color: border }, beginAtZero: true },
+        },
+      },
+    });
+  }
+
   document.addEventListener('fp-theme-change', function(){
     if(lastSpendTotals) renderSpendChart(lastSpendTotals);
     if(lastOilTrend) renderOilChart(lastOilTrend);
+    if(lastGasTrend) renderGasChart(lastGasTrend);
   });
 
   function renderActivity(vehicles, records){
@@ -486,6 +555,7 @@
     renderStats(vehicles, records);
     renderSpendChart(buildSpendByType(records));
     renderOilChart(buildOilChangeTrend(records));
+    renderGasChart(buildGasTrend(records));
     renderActivity(vehicles, records);
     if(window.FPNotif) window.FPNotif.refreshBadge();
   }
