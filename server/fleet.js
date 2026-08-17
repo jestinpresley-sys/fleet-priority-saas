@@ -16,7 +16,8 @@ const PRO_ONLY_FIELDS = ['vin', 'insProvider', 'insPolicy', 'insExpiration'];
 
 const FIELDS = [
   'tag', 'tagExpiration', 'vin', 'year', 'make', 'model', 'status', 'mileage', 'tire', 'tireBrand',
-  'paidOff', 'note', 'mechName', 'mechPhone', 'renter', 'insProvider', 'insPolicy', 'insExpiration',
+  'paidOff', 'loanTotal', 'loanRemaining', 'note', 'mechName', 'mechPhone', 'renter',
+  'insProvider', 'insPolicy', 'insExpiration',
 ];
 // Note: 'imagePath' is intentionally excluded from FIELDS — it's only ever
 // set through the dedicated image upload/delete routes below, never through

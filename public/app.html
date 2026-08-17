@@ -241,6 +241,19 @@
   }
   .paid-yes{background:rgba(62,207,142,0.15);color:var(--green);}
   .paid-no{background:rgba(245,185,75,0.15);color:var(--amber);}
+  .payoff-bar{
+    width:100%;height:8px;border-radius:20px;overflow:hidden;background:var(--red);
+  }
+  .payoff-bar-paid{background:var(--green);height:100%;width:0%;transition:width .2s ease;}
+  .payoff-bar-label{font-size:11.5px;color:var(--text-dim);margin-top:5px;}
+  .card-payoff{margin-top:10px;}
+  .note-label-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .note-edit-btn{
+    background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:6px;
+    font-size:11.5px;font-weight:600;padding:3px 9px;cursor:pointer;
+  }
+  .note-edit-btn:hover{background:var(--panel-2);color:var(--text);}
+  textarea:read-only{background:var(--panel-2);color:var(--text-dim);cursor:default;}
   .card-note{
     margin-top:10px;padding-top:10px;border-top:1px solid var(--border);
     font-size:12.5px;color:var(--text-dim);line-height:1.4;
@@ -569,7 +582,22 @@
         <div class="field"><label>Tire Type</label><input type="text" id="f_tire" placeholder="All-season, All-terrain, etc."></div>
         <div class="field"><label>Tire Brand</label><input type="text" id="f_tireBrand" placeholder="Michelin, Goodyear, etc."></div>
         <div class="field full checkbox-row"><input type="checkbox" id="f_paidoff"><label style="margin:0;" for="f_paidoff">Vehicle is paid off</label></div>
-        <div class="field full"><label>Current Car Note (condition, payoff status, issues, etc.)</label><textarea id="f_note" placeholder="e.g. $340/mo remaining on loan, minor bumper scuff, due for oil change"></textarea></div>
+
+        <div class="section-label">Payoff Tracker</div>
+        <div class="field"><label>Total Loan / Price ($)</label><input type="number" id="f_loanTotal" min="0" step="0.01" placeholder="18000"></div>
+        <div class="field"><label>Amount Remaining ($)</label><input type="number" id="f_loanRemaining" min="0" step="0.01" placeholder="6200"></div>
+        <div class="field full" id="payoffBarPreviewWrap" style="display:none;">
+          <div class="payoff-bar"><div class="payoff-bar-paid" id="payoffBarPreviewFill"></div></div>
+          <div class="payoff-bar-label" id="payoffBarPreviewLabel"></div>
+        </div>
+
+        <div class="field full">
+          <div class="note-label-row">
+            <label style="margin:0;">Current Car Note (condition, payoff status, issues, etc.)</label>
+            <button type="button" class="note-edit-btn" id="noteEditBtn" style="display:none;">Edit</button>
+          </div>
+          <textarea id="f_note" placeholder="e.g. minor bumper scuff, due for oil change"></textarea>
+        </div>
 
         <div class="section-label">Maintenance History</div>
         <div class="field full">
@@ -1006,6 +1034,27 @@
     return `<span class="tag-expiry ${cls}">${escapeHtml(label)}</span>`;
   }
 
+  function money0(n){
+    return '$' + (Number(n) || 0).toLocaleString();
+  }
+  function payoffPercent(total, remaining){
+    const t = Number(total) || 0;
+    if(t <= 0) return null;
+    const r = Math.max(0, Number(remaining) || 0);
+    const pct = ((t - r) / t) * 100;
+    return Math.max(0, Math.min(100, pct));
+  }
+  function payoffBarHtml(c){
+    const pct = payoffPercent(c.loanTotal, c.loanRemaining);
+    if(pct === null) return '';
+    return `
+      <div class="card-payoff">
+        <div class="payoff-bar"><div class="payoff-bar-paid" style="width:${pct.toFixed(1)}%;"></div></div>
+        <div class="payoff-bar-label">${Math.round(pct)}% paid off — ${money0(c.loanRemaining)} remaining of ${money0(c.loanTotal)}</div>
+      </div>
+    `;
+  }
+
   function render(){
     renderStats();
     const list = getFiltered();
@@ -1043,12 +1092,44 @@
         <div class="card-row"><span>Paid Off</span><span><span class="paid-pill ${c.paidOff ? 'paid-yes':'paid-no'}">${c.paidOff ? 'Paid Off' : 'Financed'}</span></span></div>
         <div class="card-row"><span>Mechanic</span><span>${escapeHtml(c.mechName) || '—'}</span></div>
         ${c.renter ? `<div class="card-row"><span>Renter</span><span>${escapeHtml(c.renter)}</span></div>` : ''}
+        ${payoffBarHtml(c)}
         ${c.note ? `<div class="card-note">${escapeHtml(c.note)}</div>` : ''}
       `;
       card.addEventListener('click', ()=>openModal(c.id));
       grid.appendChild(card);
     });
   }
+
+  /* ---------------- Payoff tracker (live preview inside the modal) ---------------- */
+  const payoffBarPreviewWrap = document.getElementById('payoffBarPreviewWrap');
+  const payoffBarPreviewFill = document.getElementById('payoffBarPreviewFill');
+  const payoffBarPreviewLabel = document.getElementById('payoffBarPreviewLabel');
+  function updatePayoffPreview(){
+    const total = document.getElementById('f_loanTotal').value;
+    const remaining = document.getElementById('f_loanRemaining').value;
+    const pct = payoffPercent(total, remaining);
+    if(pct === null){
+      payoffBarPreviewWrap.style.display = 'none';
+      return;
+    }
+    payoffBarPreviewWrap.style.display = 'block';
+    payoffBarPreviewFill.style.width = pct.toFixed(1) + '%';
+    payoffBarPreviewLabel.textContent = `${Math.round(pct)}% paid off — ${money0(remaining)} remaining of ${money0(total)}`;
+  }
+  document.getElementById('f_loanTotal').addEventListener('input', updatePayoffPreview);
+  document.getElementById('f_loanRemaining').addEventListener('input', updatePayoffPreview);
+
+  /* ---------------- Car note: locked behind an Edit button once a vehicle exists ---------------- */
+  const noteEditBtn = document.getElementById('noteEditBtn');
+  const fNote = document.getElementById('f_note');
+  function setNoteEditable(editable){
+    fNote.readOnly = !editable;
+    noteEditBtn.style.display = editable ? 'none' : 'inline-block';
+  }
+  noteEditBtn.addEventListener('click', ()=>{
+    setNoteEditable(true);
+    fNote.focus();
+  });
 
   function openModal(id){
     editingId = id || null;
@@ -1073,6 +1154,8 @@
       document.getElementById('f_tire').value = c.tire || '';
       document.getElementById('f_tireBrand').value = c.tireBrand || '';
       document.getElementById('f_paidoff').checked = !!c.paidOff;
+      document.getElementById('f_loanTotal').value = c.loanTotal || '';
+      document.getElementById('f_loanRemaining').value = c.loanRemaining || '';
       document.getElementById('f_note').value = c.note || '';
       document.getElementById('f_mechName').value = c.mechName || '';
       document.getElementById('f_mechPhone').value = c.mechPhone || '';
@@ -1080,10 +1163,12 @@
       document.getElementById('f_insProvider').value = c.insProvider || '';
       document.getElementById('f_insPolicy').value = c.insPolicy || '';
       document.getElementById('f_insExpiration').value = c.insExpiration || '';
+      setNoteEditable(false);
     }else{
       modalTitle.textContent = 'Add Vehicle';
       deleteBtn.style.display = 'none';
       document.getElementById('f_status').value = 'Available';
+      setNoteEditable(true);
     }
     const pro = isPro();
     document.getElementById('vinFieldWrap').style.display = pro ? '' : 'none';
@@ -1092,6 +1177,7 @@
     document.getElementById('insExpirationFieldWrap').style.display = pro ? '' : 'none';
     document.getElementById('proUpgradeNote').style.display = pro ? 'none' : 'block';
     refreshMaintenanceUI(id);
+    updatePayoffPreview();
     overlay.classList.add('open');
   }
   function closeModal(){
@@ -1213,6 +1299,8 @@
       tire: document.getElementById('f_tire').value.trim(),
       tireBrand: document.getElementById('f_tireBrand').value.trim(),
       paidOff: document.getElementById('f_paidoff').checked,
+      loanTotal: document.getElementById('f_loanTotal').value,
+      loanRemaining: document.getElementById('f_loanRemaining').value,
       note: document.getElementById('f_note').value.trim(),
       mechName: document.getElementById('f_mechName').value.trim(),
       mechPhone: document.getElementById('f_mechPhone').value.trim(),
