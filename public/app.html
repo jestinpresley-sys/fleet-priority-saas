@@ -586,6 +586,11 @@
         <div class="section-label">Payoff Tracker</div>
         <div class="field"><label>Total Loan / Price ($)</label><input type="number" id="f_loanTotal" min="0" step="0.01" placeholder="18000"></div>
         <div class="field"><label>Amount Remaining ($)</label><input type="number" id="f_loanRemaining" min="0" step="0.01" placeholder="6200"></div>
+        <div class="field full">
+          <label>Monthly Payment ($, optional)</label>
+          <input type="number" id="f_monthlyPayment" min="0" step="0.01" placeholder="340">
+          <p class="maint-note" style="margin-top:6px;">If set, the bar advances by this amount automatically each month from today — no need to update Amount Remaining by hand.</p>
+        </div>
         <div class="field full" id="payoffBarPreviewWrap" style="display:none;">
           <div class="payoff-bar"><div class="payoff-bar-paid" id="payoffBarPreviewFill"></div></div>
           <div class="payoff-bar-label" id="payoffBarPreviewLabel"></div>
@@ -1044,13 +1049,40 @@
     const pct = ((t - r) / t) * 100;
     return Math.max(0, Math.min(100, pct));
   }
+  // Full months elapsed since dateStr, floored — doesn't count this month
+  // until the day-of-month has actually passed (so "the 15th" only ticks
+  // over on the 15th of each following month, not on the 1st).
+  function monthsElapsed(dateStr){
+    if(!dateStr) return 0;
+    const from = new Date(dateStr + 'T00:00:00');
+    if(Number.isNaN(from.getTime())) return 0;
+    const now = new Date();
+    let months = (now.getFullYear() - from.getFullYear()) * 12 + (now.getMonth() - from.getMonth());
+    if(now.getDate() < from.getDate()) months -= 1;
+    return Math.max(0, months);
+  }
+  // Applies automatic monthly decay (if a monthly payment + anchor date are
+  // set) on top of the last manually-entered "amount remaining" figure.
+  function effectivePayoff(c){
+    const total = Number(c.loanTotal) || 0;
+    if(total <= 0) return null;
+    let remaining = Math.max(0, Number(c.loanRemaining) || 0);
+    const monthly = Number(c.monthlyPayment) || 0;
+    if(monthly > 0 && c.loanAsOfDate){
+      remaining = Math.max(0, remaining - monthly * monthsElapsed(c.loanAsOfDate));
+    }
+    remaining = Math.min(remaining, total);
+    const pct = ((total - remaining) / total) * 100;
+    return { pct: Math.max(0, Math.min(100, pct)), remaining, total };
+  }
   function payoffBarHtml(c){
-    const pct = payoffPercent(c.loanTotal, c.loanRemaining);
-    if(pct === null) return '';
+    const p = effectivePayoff(c);
+    if(p === null) return '';
+    const autoNote = (Number(c.monthlyPayment) > 0) ? ` · ${money0(c.monthlyPayment)}/mo` : '';
     return `
       <div class="card-payoff">
-        <div class="payoff-bar"><div class="payoff-bar-paid" style="width:${pct.toFixed(1)}%;"></div></div>
-        <div class="payoff-bar-label">${Math.round(pct)}% paid off — ${money0(c.loanRemaining)} remaining of ${money0(c.loanTotal)}</div>
+        <div class="payoff-bar"><div class="payoff-bar-paid" style="width:${p.pct.toFixed(1)}%;"></div></div>
+        <div class="payoff-bar-label">${Math.round(p.pct)}% paid off — ${money0(p.remaining)} remaining of ${money0(p.total)}${autoNote}</div>
       </div>
     `;
   }
@@ -1155,7 +1187,11 @@
       document.getElementById('f_tireBrand').value = c.tireBrand || '';
       document.getElementById('f_paidoff').checked = !!c.paidOff;
       document.getElementById('f_loanTotal').value = c.loanTotal || '';
-      document.getElementById('f_loanRemaining').value = c.loanRemaining || '';
+      // Show today's auto-decayed figure, not the stale anchor value, so
+      // editing (or just re-saving) locks in what the card is currently showing.
+      const effRemaining = effectivePayoff(c);
+      document.getElementById('f_loanRemaining').value = effRemaining ? Math.round(effRemaining.remaining * 100) / 100 : (c.loanRemaining || '');
+      document.getElementById('f_monthlyPayment').value = c.monthlyPayment || '';
       document.getElementById('f_note').value = c.note || '';
       document.getElementById('f_mechName').value = c.mechName || '';
       document.getElementById('f_mechPhone').value = c.mechPhone || '';
@@ -1301,6 +1337,7 @@
       paidOff: document.getElementById('f_paidoff').checked,
       loanTotal: document.getElementById('f_loanTotal').value,
       loanRemaining: document.getElementById('f_loanRemaining').value,
+      monthlyPayment: document.getElementById('f_monthlyPayment').value,
       note: document.getElementById('f_note').value.trim(),
       mechName: document.getElementById('f_mechName').value.trim(),
       mechPhone: document.getElementById('f_mechPhone').value.trim(),

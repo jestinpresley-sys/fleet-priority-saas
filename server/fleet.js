@@ -16,12 +16,15 @@ const PRO_ONLY_FIELDS = ['vin', 'insProvider', 'insPolicy', 'insExpiration'];
 
 const FIELDS = [
   'tag', 'tagExpiration', 'vin', 'year', 'make', 'model', 'status', 'mileage', 'tire', 'tireBrand',
-  'paidOff', 'loanTotal', 'loanRemaining', 'note', 'mechName', 'mechPhone', 'renter',
+  'paidOff', 'loanTotal', 'loanRemaining', 'monthlyPayment', 'note', 'mechName', 'mechPhone', 'renter',
   'insProvider', 'insPolicy', 'insExpiration',
 ];
 // Note: 'imagePath' is intentionally excluded from FIELDS — it's only ever
 // set through the dedicated image upload/delete routes below, never through
 // the generic JSON create/update body.
+// Note: 'loanAsOfDate' is intentionally excluded from FIELDS too — it's a
+// server-stamped anchor (see stampLoanAsOfDate below), not something a
+// client can set directly.
 
 function pick(body, plan) {
   const out = {};
@@ -30,6 +33,21 @@ function pick(body, plan) {
     if (body[f] !== undefined) out[f] = body[f];
   });
   return out;
+}
+
+// Stamp today's date as the reference point the payoff bar's monthly
+// auto-decay counts forward from — either because "amount remaining" just
+// changed, or because a monthly payment was just turned on for a vehicle
+// that didn't have an anchor date yet. Otherwise leave it alone, so editing
+// an unrelated field (mileage, status, etc.) doesn't reset the countdown.
+function stampLoanAsOfDate(data, existing) {
+  if (data.loanRemaining === undefined || data.loanRemaining === '') return;
+  const remainingChanged = String(data.loanRemaining) !== String((existing && existing.loanRemaining) ?? '');
+  const monthlySet = data.monthlyPayment !== undefined && data.monthlyPayment !== '' && Number(data.monthlyPayment) > 0;
+  const hasAnchorAlready = !!(existing && existing.loanAsOfDate);
+  if (remainingChanged || (monthlySet && !hasAnchorAlready)) {
+    data.loanAsOfDate = new Date().toISOString().slice(0, 10);
+  }
 }
 
 /* ---------------- Photo storage ---------------- */
@@ -80,12 +98,18 @@ router.post('/', (req, res) => {
       error: `Your ${req.user.plan || 'current'} plan allows up to ${limit} vehicles. Upgrade to add more.`,
     });
   }
-  const vehicle = db.createVehicle(req.user.id, pick(req.body || {}, req.user.plan));
+  const data = pick(req.body || {}, req.user.plan);
+  stampLoanAsOfDate(data, undefined);
+  const vehicle = db.createVehicle(req.user.id, data);
   res.status(201).json({ vehicle });
 });
 
 router.put('/:id', (req, res) => {
-  const vehicle = db.updateVehicle(req.user.id, req.params.id, pick(req.body || {}, req.user.plan));
+  const existing = db.getVehicle(req.user.id, req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Vehicle not found.' });
+  const data = pick(req.body || {}, req.user.plan);
+  stampLoanAsOfDate(data, existing);
+  const vehicle = db.updateVehicle(req.user.id, req.params.id, data);
   if (!vehicle) return res.status(404).json({ error: 'Vehicle not found.' });
   res.json({ vehicle });
 });
