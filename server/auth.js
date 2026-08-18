@@ -1,7 +1,11 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { getUserByEmail, getUserById, createUser, updateUser } = require('./db');
+const {
+  getUserByEmail, getUserById, createUser, updateUser,
+  createSession, getSession, listSessionsForUser, touchSession,
+  deleteSession, deleteSessionsForUserExcept,
+} = require('./db');
 
 const COOKIE_NAME = 'fp_session';
 
@@ -9,8 +13,12 @@ function jwtSecret() {
   return process.env.JWT_SECRET || 'insecure-dev-secret-change-me';
 }
 
-function signToken(userId) {
-  return jwt.sign({ userId }, jwtSecret(), { expiresIn: '7d' });
+// Every login mints its own session record, and the JWT carries that
+// session's id — that's what lets a single device be signed out
+// individually later ("linked devices"), rather than only being able to
+// invalidate every token for a user at once.
+function signToken(userId, sessionId) {
+  return jwt.sign({ userId, sessionId }, jwtSecret(), { expiresIn: '7d' });
 }
 
 function setSessionCookie(res, token) {
@@ -22,6 +30,12 @@ function setSessionCookie(res, token) {
   });
 }
 
+function startSession(res, user, req) {
+  const session = createSession(user.id, req.headers['user-agent'] || '');
+  setSessionCookie(res, signToken(user.id, session.id));
+  return session;
+}
+
 function requireAuth(req, res, next) {
   const token = req.cookies ? req.cookies[COOKIE_NAME] : null;
   if (!token) return res.status(401).json({ error: 'Not authenticated.' });
@@ -29,11 +43,38 @@ function requireAuth(req, res, next) {
     const payload = jwt.verify(token, jwtSecret());
     const user = getUserById(payload.userId);
     if (!user) return res.status(401).json({ error: 'Not authenticated.' });
+    const session = getSession(payload.sessionId);
+    if (!session || session.userId !== user.id) {
+      return res.status(401).json({ error: 'This session has been signed out.' });
+    }
+    touchSession(session.id);
     req.user = user;
+    req.sessionId = session.id;
     next();
   } catch (e) {
     return res.status(401).json({ error: 'Not authenticated.' });
   }
+}
+
+// Rough, dependency-free device label for the "linked devices" list — good
+// enough to tell your devices apart, not meant to be a precise UA parse.
+function describeUserAgent(ua) {
+  ua = ua || '';
+  let os = 'Unknown device';
+  if (/iPhone/i.test(ua)) os = 'iPhone';
+  else if (/iPad/i.test(ua)) os = 'iPad';
+  else if (/Android/i.test(ua)) os = 'Android';
+  else if (/Mac OS X/i.test(ua)) os = 'Mac';
+  else if (/Windows/i.test(ua)) os = 'Windows';
+  else if (/Linux/i.test(ua)) os = 'Linux';
+
+  let browser = '';
+  if (/Edg\//i.test(ua)) browser = 'Edge';
+  else if (/CriOS/i.test(ua) || (/Chrome\//i.test(ua) && !/Chromium/i.test(ua))) browser = 'Chrome';
+  else if (/Firefox\//i.test(ua)) browser = 'Firefox';
+  else if (/Safari\//i.test(ua) && /Version\//i.test(ua)) browser = 'Safari';
+
+  return browser ? `${browser} on ${os}` : os;
 }
 
 function requireActiveSub(req, res, next) {
@@ -69,7 +110,7 @@ router.post('/signup', async (req, res) => {
   }
   const passwordHash = await bcrypt.hash(password, 10);
   const user = createUser({ email: normalizedEmail, passwordHash });
-  setSessionCookie(res, signToken(user.id));
+  startSession(res, user, req);
   res.status(201).json({ user: publicUser(user) });
 });
 
@@ -79,11 +120,18 @@ router.post('/login', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Invalid email or password.' });
   const ok = await bcrypt.compare(String(password || ''), user.passwordHash);
   if (!ok) return res.status(401).json({ error: 'Invalid email or password.' });
-  setSessionCookie(res, signToken(user.id));
+  startSession(res, user, req);
   res.json({ user: publicUser(user) });
 });
 
 router.post('/logout', (req, res) => {
+  const token = req.cookies ? req.cookies[COOKIE_NAME] : null;
+  if (token) {
+    try {
+      const payload = jwt.verify(token, jwtSecret());
+      deleteSession(payload.sessionId);
+    } catch (e) { /* token already invalid/expired — nothing to revoke */ }
+  }
   res.clearCookie(COOKIE_NAME);
   res.json({ ok: true });
 });
@@ -103,6 +151,57 @@ router.put('/profile', requireAuth, (req, res) => {
   }
   const updated = updateUser(req.user.id, { name: trimmed });
   res.json({ user: publicUser(updated) });
+});
+
+router.put('/password', requireAuth, async (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Current and new password are required.' });
+  }
+  const ok = await bcrypt.compare(String(currentPassword), req.user.passwordHash);
+  if (!ok) {
+    return res.status(401).json({ error: 'Current password is incorrect.' });
+  }
+  if (String(newPassword).length < 8) {
+    return res.status(400).json({ error: 'New password must be at least 8 characters.' });
+  }
+  const passwordHash = await bcrypt.hash(String(newPassword), 10);
+  updateUser(req.user.id, { passwordHash });
+  // Changing your password signs out every other device — standard
+  // practice, and it doubles as recovery if a session was compromised.
+  deleteSessionsForUserExcept(req.user.id, req.sessionId);
+  res.json({ ok: true });
+});
+
+router.get('/sessions', requireAuth, (req, res) => {
+  const sessions = listSessionsForUser(req.user.id)
+    .slice()
+    .sort((a, b) => (b.lastSeenAt || '').localeCompare(a.lastSeenAt || ''))
+    .map((s) => ({
+      id: s.id,
+      device: describeUserAgent(s.userAgent),
+      createdAt: s.createdAt,
+      lastSeenAt: s.lastSeenAt,
+      isCurrent: s.id === req.sessionId,
+    }));
+  res.json({ sessions });
+});
+
+// Bulk revoke — "log out other devices". Declared before /sessions/:id
+// only for readability; Express doesn't need the ordering since the paths
+// don't overlap.
+router.delete('/sessions', requireAuth, (req, res) => {
+  deleteSessionsForUserExcept(req.user.id, req.sessionId);
+  res.json({ ok: true });
+});
+
+router.delete('/sessions/:id', requireAuth, (req, res) => {
+  const session = getSession(req.params.id);
+  if (!session || session.userId !== req.user.id) {
+    return res.status(404).json({ error: 'Session not found.' });
+  }
+  deleteSession(req.params.id);
+  res.json({ ok: true });
 });
 
 module.exports = { router, requireAuth, requireActiveSub, publicUser };

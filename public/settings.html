@@ -139,9 +139,23 @@
   .btn:disabled{opacity:0.6;cursor:default;}
   .btn-primary{background:var(--accent);color:#fff;}
   .btn-primary:hover{filter:brightness(1.1);}
+  .btn-secondary{background:var(--panel-2);color:var(--text);border:1px solid var(--border);}
+  .btn-secondary:hover{background:var(--btn-secondary-hover);}
+  .btn-sm{padding:6px 12px;font-size:12.5px;}
   .settings-status{font-size:12.5px;}
   .settings-status.ok{color:var(--green);}
   .settings-status.err{color:var(--red);}
+  .settings-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+  .settings-card-header h3{margin:0 0 4px;}
+  .session-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
+  .session-row:last-child{border-bottom:none;padding-bottom:0;}
+  .session-row:first-child{padding-top:0;}
+  .session-device{font-size:13.5px;font-weight:600;}
+  .session-meta{font-size:12px;color:var(--text-dim);margin-top:2px;}
+  .session-current-badge{
+    font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;
+    padding:3px 9px;border-radius:20px;background:rgba(62,207,142,0.15);color:var(--green);white-space:nowrap;
+  }
   .theme-mode-row{display:flex;gap:8px;}
   .theme-mode-btn{
     flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;
@@ -237,6 +251,31 @@
         </button>
       </div>
     </div>
+
+    <div class="settings-card" style="margin-top:20px;">
+      <h3>Password</h3>
+      <p class="sub">Changing your password signs you out of every other device.</p>
+      <form id="passwordForm">
+        <div class="field"><label>Current password</label><input type="password" id="f_currentPassword" autocomplete="current-password"></div>
+        <div class="field"><label>New password</label><input type="password" id="f_newPassword" autocomplete="new-password" minlength="8"></div>
+        <div class="field"><label>Confirm new password</label><input type="password" id="f_confirmPassword" autocomplete="new-password" minlength="8"></div>
+        <div class="settings-actions">
+          <button type="submit" class="btn btn-primary" id="passwordSaveBtn">Update password</button>
+          <span class="settings-status" id="passwordStatus"></span>
+        </div>
+      </form>
+    </div>
+
+    <div class="settings-card" style="margin-top:20px;">
+      <div class="settings-card-header">
+        <div>
+          <h3>Linked Devices</h3>
+          <p class="sub">Everywhere you're currently signed in.</p>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="logoutOthersBtn" style="display:none;">Log out other devices</button>
+      </div>
+      <div id="sessionsList"><p class="sub">Loading…</p></div>
+    </div>
   </div>
   </div>
 </div>
@@ -254,6 +293,17 @@
       throw err;
     }
     return data;
+  }
+
+  function escapeHtml(str){
+    if(str===undefined || str===null) return '';
+    return String(str).replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  }
+  function fmtWhen(iso){
+    if(!iso) return '—';
+    const d = new Date(iso);
+    if(isNaN(d.getTime())) return '—';
+    return d.toLocaleString(undefined, { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
   }
 
   document.getElementById('logoutBtn').addEventListener('click', async ()=>{
@@ -337,6 +387,101 @@
     }
   });
 
+  const passwordForm = document.getElementById('passwordForm');
+  const passwordSaveBtn = document.getElementById('passwordSaveBtn');
+  const passwordStatus = document.getElementById('passwordStatus');
+
+  passwordForm.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    passwordStatus.textContent = '';
+    passwordStatus.className = 'settings-status';
+    const current = document.getElementById('f_currentPassword').value;
+    const next = document.getElementById('f_newPassword').value;
+    const confirm = document.getElementById('f_confirmPassword').value;
+    if(next.length < 8){
+      passwordStatus.textContent = 'New password must be at least 8 characters.';
+      passwordStatus.className = 'settings-status err';
+      return;
+    }
+    if(next !== confirm){
+      passwordStatus.textContent = 'New passwords do not match.';
+      passwordStatus.className = 'settings-status err';
+      return;
+    }
+    passwordSaveBtn.disabled = true;
+    passwordSaveBtn.textContent = 'Updating…';
+    try{
+      await api('/api/auth/password', {
+        method: 'PUT',
+        body: JSON.stringify({ currentPassword: current, newPassword: next }),
+      });
+      passwordForm.reset();
+      passwordStatus.textContent = 'Password updated — other devices were signed out.';
+      passwordStatus.className = 'settings-status ok';
+      loadSessions();
+    }catch(err){
+      passwordStatus.textContent = err.message;
+      passwordStatus.className = 'settings-status err';
+    }finally{
+      passwordSaveBtn.disabled = false;
+      passwordSaveBtn.textContent = 'Update password';
+    }
+  });
+
+  const sessionsList = document.getElementById('sessionsList');
+  const logoutOthersBtn = document.getElementById('logoutOthersBtn');
+
+  async function loadSessions(){
+    try{
+      const { sessions } = await api('/api/auth/sessions');
+      if(!sessions || sessions.length === 0){
+        sessionsList.innerHTML = '<p class="sub">No active sessions found.</p>';
+        logoutOthersBtn.style.display = 'none';
+        return;
+      }
+      logoutOthersBtn.style.display = sessions.some(s=>!s.isCurrent) ? 'inline-block' : 'none';
+      sessionsList.innerHTML = sessions.map(s => `
+        <div class="session-row">
+          <div>
+            <div class="session-device">${escapeHtml(s.device)}</div>
+            <div class="session-meta">Last active ${fmtWhen(s.lastSeenAt)} · Signed in ${fmtWhen(s.createdAt)}</div>
+          </div>
+          ${s.isCurrent
+            ? '<span class="session-current-badge">This device</span>'
+            : `<button type="button" class="btn btn-secondary btn-sm" data-session-id="${s.id}">Log out</button>`}
+        </div>
+      `).join('');
+      sessionsList.querySelectorAll('[data-session-id]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          btn.disabled = true;
+          btn.textContent = 'Logging out…';
+          try{
+            await api(`/api/auth/sessions/${btn.getAttribute('data-session-id')}`, { method:'DELETE' });
+            loadSessions();
+          }catch(err){
+            alert(err.message);
+          }
+        });
+      });
+    }catch(err){
+      sessionsList.innerHTML = '<p class="sub">Could not load sessions.</p>';
+    }
+  }
+
+  logoutOthersBtn.addEventListener('click', async ()=>{
+    logoutOthersBtn.disabled = true;
+    logoutOthersBtn.textContent = 'Logging out…';
+    try{
+      await api('/api/auth/sessions', { method:'DELETE' });
+      loadSessions();
+    }catch(err){
+      alert(err.message);
+    }finally{
+      logoutOthersBtn.disabled = false;
+      logoutOthersBtn.textContent = 'Log out other devices';
+    }
+  });
+
   async function init(){
     let user;
     try{
@@ -352,6 +497,7 @@
     applyUserToSidebar(user);
     document.getElementById('f_name').value = user.name || '';
     document.getElementById('f_email').value = user.email;
+    loadSessions();
     if(window.FPNotif) window.FPNotif.refreshBadge();
   }
 

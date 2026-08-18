@@ -19,7 +19,7 @@ const DB_FILE = path.join(DATA_DIR, 'db.json');
 function ensureDB() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DB_FILE)) {
-    fs.writeFileSync(DB_FILE, JSON.stringify({ users: [], vehicles: [], maintenance: [] }, null, 2));
+    fs.writeFileSync(DB_FILE, JSON.stringify({ users: [], vehicles: [], maintenance: [], sessions: [] }, null, 2));
   }
 }
 ensureDB();
@@ -39,8 +39,9 @@ let cache = null;
 function db() {
   if (!cache) {
     cache = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-    // Defensive: older db.json files predate the maintenance log feature.
+    // Defensive: older db.json files predate the maintenance log / sessions features.
     if (!Array.isArray(cache.maintenance)) cache.maintenance = [];
+    if (!Array.isArray(cache.sessions)) cache.sessions = [];
   }
   return cache;
 }
@@ -174,6 +175,49 @@ function deleteMaintenanceForVehicle(userId, vehicleId) {
   persist();
 }
 
+/* ---------------- Sessions (one per login, backs "linked devices") ---------------- */
+
+function createSession(userId, userAgent) {
+  const now = new Date().toISOString();
+  const session = {
+    id: crypto.randomUUID(),
+    userId,
+    userAgent: userAgent || '',
+    createdAt: now,
+    lastSeenAt: now,
+  };
+  db().sessions.push(session);
+  persist();
+  return session;
+}
+function getSession(id) {
+  return db().sessions.find((s) => s.id === id) || null;
+}
+function listSessionsForUser(userId) {
+  return db().sessions.filter((s) => s.userId === userId);
+}
+// Called on every authenticated request — throttled so normal browsing
+// doesn't trigger a disk write on every single API call.
+function touchSession(id) {
+  const session = db().sessions.find((s) => s.id === id);
+  if (!session) return;
+  if (Date.now() - new Date(session.lastSeenAt).getTime() < 60 * 1000) return;
+  session.lastSeenAt = new Date().toISOString();
+  persist();
+}
+function deleteSession(id) {
+  const data = db();
+  const before = data.sessions.length;
+  data.sessions = data.sessions.filter((s) => s.id !== id);
+  persist();
+  return data.sessions.length < before;
+}
+function deleteSessionsForUserExcept(userId, exceptId) {
+  const data = db();
+  data.sessions = data.sessions.filter((s) => !(s.userId === userId && s.id !== exceptId));
+  persist();
+}
+
 module.exports = {
   getUserByEmail,
   getUserById,
@@ -193,4 +237,10 @@ module.exports = {
   updateMaintenance,
   deleteMaintenance,
   deleteMaintenanceForVehicle,
+  createSession,
+  getSession,
+  listSessionsForUser,
+  touchSession,
+  deleteSession,
+  deleteSessionsForUserExcept,
 };
