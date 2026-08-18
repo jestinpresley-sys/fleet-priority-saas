@@ -8,7 +8,8 @@ const { router: authRouter } = require('./auth');
 const { router: billingRouter, webhookHandler } = require('./billing');
 const fleetRouter = require('./fleet');
 const { router: maintenanceRouter } = require('./maintenance');
-const notificationsRouter = require('./notifications');
+const { router: notificationsRouter } = require('./notifications');
+const { startReminderScheduler } = require('./reminders');
 
 const REQUIRED_ENV = [
   'JWT_SECRET',
@@ -64,4 +65,5 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Fleet Priority SaaS running at http://localhost:${PORT}`);
+  startReminderScheduler();
 });

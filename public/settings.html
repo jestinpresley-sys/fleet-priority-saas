@@ -165,6 +165,8 @@
   .theme-mode-btn svg{width:20px;height:20px;flex-shrink:0;}
   .theme-mode-btn:hover{background:var(--btn-secondary-hover);}
   .theme-mode-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(79,127,255,0.08);}
+  .checkbox-row{display:flex;align-items:center;gap:9px;font-size:13.5px;cursor:pointer;}
+  .checkbox-row input{width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;}
 </style>
 </head>
 <body>
@@ -250,6 +252,16 @@
           <span>System</span>
         </button>
       </div>
+    </div>
+
+    <div class="settings-card" style="margin-top:20px;">
+      <h3>Notifications</h3>
+      <p class="sub">Reminders for tag, insurance, and maintenance items that need attention.</p>
+      <label class="checkbox-row">
+        <input type="checkbox" id="f_emailReminders">
+        <span>Email me when something's due soon or overdue</span>
+      </label>
+      <span class="settings-status" id="notificationsStatus"></span>
     </div>
 
     <div class="settings-card" style="margin-top:20px;">
@@ -482,6 +494,29 @@
     }
   });
 
+  const emailRemindersCheckbox = document.getElementById('f_emailReminders');
+  const notificationsStatus = document.getElementById('notificationsStatus');
+  emailRemindersCheckbox.addEventListener('change', async ()=>{
+    const desired = emailRemindersCheckbox.checked;
+    notificationsStatus.textContent = '';
+    notificationsStatus.className = 'settings-status';
+    emailRemindersCheckbox.disabled = true;
+    try{
+      await api('/api/auth/notification-preferences', {
+        method: 'PUT',
+        body: JSON.stringify({ emailRemindersEnabled: desired }),
+      });
+      notificationsStatus.textContent = 'Saved.';
+      notificationsStatus.className = 'settings-status ok';
+    }catch(err){
+      emailRemindersCheckbox.checked = !desired;
+      notificationsStatus.textContent = err.message;
+      notificationsStatus.className = 'settings-status err';
+    }finally{
+      emailRemindersCheckbox.disabled = false;
+    }
+  });
+
   async function init(){
     let user;
     try{
@@ -497,6 +532,7 @@
     applyUserToSidebar(user);
     document.getElementById('f_name').value = user.name || '';
     document.getElementById('f_email').value = user.email;
+    emailRemindersCheckbox.checked = user.emailRemindersEnabled !== false;
     loadSessions();
     if(window.FPNotif) window.FPNotif.refreshBadge();
   }

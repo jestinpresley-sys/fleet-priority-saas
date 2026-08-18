@@ -49,6 +49,7 @@ function buildAlerts(userId, plan) {
             ? `Expired ${Math.abs(tagDays)} day(s) ago (${v.tagExpiration})`
             : `Expires in ${tagDays} day(s) (${v.tagExpiration})`,
           days: tagDays,
+          date: v.tagExpiration,
         });
       }
     }
@@ -69,6 +70,7 @@ function buildAlerts(userId, plan) {
             ? `Expired ${Math.abs(insDays)} day(s) ago (${v.insExpiration})`
             : `Expires in ${insDays} day(s) (${v.insExpiration})`,
           days: insDays,
+          date: v.insExpiration,
         });
       }
     }
@@ -91,6 +93,7 @@ function buildAlerts(userId, plan) {
         ? `Was due ${Math.abs(days)} day(s) ago (${m.nextDue})`
         : `Due in ${days} day(s) (${m.nextDue})`,
       days,
+      date: m.nextDue,
     });
   });
 
@@ -105,4 +108,7 @@ router.get('/', (req, res) => {
   res.json({ alerts: buildAlerts(req.user.id, req.user.plan) });
 });
 
-module.exports = router;
+// buildAlerts is also used by server/reminders.js, so the email digest
+// computes alerts with the exact same rules as the in-app Notifications
+// page — no risk of the two disagreeing about what counts as "due soon".
+module.exports = { router, buildAlerts };

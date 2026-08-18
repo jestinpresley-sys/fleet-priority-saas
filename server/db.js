@@ -60,6 +60,9 @@ function persist() {
 
 /* ---------------- Users ---------------- */
 
+function listUsers() {
+  return db().users;
+}
 function getUserByEmail(email) {
   return db().users.find((u) => u.email === email) || null;
 }
@@ -219,6 +222,7 @@ function deleteSessionsForUserExcept(userId, exceptId) {
 }
 
 module.exports = {
+  listUsers,
   getUserByEmail,
   getUserById,
   getUserByStripeCustomerId,

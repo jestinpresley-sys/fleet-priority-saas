@@ -99,6 +99,7 @@ function publicUser(user) {
     plan: user.plan || null,
     subscriptionStatus: user.subscriptionStatus || 'inactive',
     hasBillingAccount: !!user.stripeCustomerId,
+    emailRemindersEnabled: user.emailRemindersEnabled !== false,
   };
 }
 
@@ -158,6 +159,15 @@ router.put('/profile', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Name must be 100 characters or fewer.' });
   }
   const updated = updateUser(req.user.id, { name: trimmed });
+  res.json({ user: publicUser(updated) });
+});
+
+router.put('/notification-preferences', requireAuth, (req, res) => {
+  const { emailRemindersEnabled } = req.body || {};
+  if (typeof emailRemindersEnabled !== 'boolean') {
+    return res.status(400).json({ error: 'emailRemindersEnabled must be true or false.' });
+  }
+  const updated = updateUser(req.user.id, { emailRemindersEnabled });
   res.json({ user: publicUser(updated) });
 });
 
