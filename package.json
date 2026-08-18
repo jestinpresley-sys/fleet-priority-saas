@@ -6,7 +6,8 @@
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
-    "dev": "node server/index.js"
+    "dev": "node server/index.js",
+    "comp-account": "node scripts/comp-account.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

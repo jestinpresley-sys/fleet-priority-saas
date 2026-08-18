@@ -174,3 +174,33 @@ git pull
 npm install        # only needed if package.json changed
 pm2 restart fleet-priority
 ```
+
+## 15. Comping an account (bypassing the paywall)
+
+For a client, demo, or anyone else who shouldn't have to pay — no Stripe
+subscription involved.
+
+1. Have them sign up normally at `https://yourdomain.com/signup.html`
+   (or sign up on their behalf), so they set their own password.
+2. SSH in, then **stop the app first**:
+   ```bash
+   pm2 stop fleet-priority
+   ```
+   This step isn't optional. `server/db.js` keeps the whole database in
+   memory once the app has loaded it and only ever writes that in-memory
+   copy back to disk — so if the app is left running while you edit
+   `data/db.json` directly, the next time it writes anything at all (any
+   request, from any user), it silently overwrites your edit with its own
+   stale copy. The script below refuses to run if it detects the app is
+   still up, for exactly this reason.
+3. Run the comp script:
+   ```bash
+   npm run comp-account -- client@example.com pro
+   ```
+   (`pro` or `basic` — whichever plan they should have.)
+4. Start the app again:
+   ```bash
+   pm2 start fleet-priority
+   ```
+
+They can now log in and land straight on the dashboard, no checkout.
