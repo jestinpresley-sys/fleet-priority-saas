@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notifications — Fleet Priority</title>
+<title>Settings — Fleet Priority</title>
 <script>(function(){var t=localStorage.getItem('fp_theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark');document.documentElement.setAttribute('data-theme',t);if(localStorage.getItem('fp_sidebar')==='collapsed')document.documentElement.setAttribute('data-sidebar','collapsed');})();</script>
 <style>
   :root{
@@ -111,33 +111,37 @@
     padding:3px 9px;border-radius:20px;background:rgba(79,127,255,0.15);color:var(--accent);
   }
 
-  .app{max-width:900px;margin:0 auto;padding:28px 24px 60px;}
+  .app{max-width:640px;margin:0 auto;padding:28px 24px 60px;}
   header{margin-bottom:22px;}
   header h1{margin:0;font-size:22px;letter-spacing:-0.02em;}
   header p{margin:4px 0 0;color:var(--text-dim);font-size:13px;}
 
-  .notif-section-label{
-    font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;
-    color:var(--text-dim);margin:22px 0 10px;
-  }
-  .notif-section-label:first-child{margin-top:0;}
-  .notif-card{
-    display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  .settings-card{
     background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
-    padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:border-color .15s ease;
+    padding:20px 22px;
   }
-  .notif-card:hover{border-color:var(--accent-dim);}
-  .notif-card .notif-title{font-weight:600;font-size:14px;}
-  .notif-card .notif-detail{font-size:12.5px;color:var(--text-dim);margin-top:3px;}
-  .notif-page-badge{
-    font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0;
+  .settings-card h3{margin:0 0 4px;font-size:15px;}
+  .settings-card p.sub{margin:0 0 18px;font-size:12.5px;color:var(--text-dim);}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:5px;font-weight:600;}
+  .field input{
+    width:100%;background:var(--panel-2);border:1px solid var(--border);border-radius:7px;
+    padding:9px 11px;color:var(--text);font-size:13.5px;font-family:inherit;outline:none;
   }
-  .notif-page-badge.overdue{background:rgba(240,102,95,0.15);color:var(--red);}
-  .notif-page-badge.soon{background:rgba(245,185,75,0.15);color:var(--amber);}
-  .empty-note{
-    color:var(--text-dim);font-size:14px;text-align:center;padding:60px 20px;
-    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  .field input:focus{border-color:var(--accent);}
+  .field input:disabled{color:var(--text-dim);cursor:default;}
+  .settings-actions{display:flex;align-items:center;gap:12px;margin-top:4px;}
+  .btn{
+    border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;
+    cursor:pointer;transition:filter .15s ease,transform .05s ease;
   }
+  .btn:active{transform:scale(0.97);}
+  .btn:disabled{opacity:0.6;cursor:default;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{filter:brightness(1.1);}
+  .settings-status{font-size:12.5px;}
+  .settings-status.ok{color:var(--green);}
+  .settings-status.err{color:var(--red);}
 </style>
 </head>
 <body>
@@ -163,9 +167,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
         <span class="sidebar-label">Fleet overview</span>
       </a>
-      <a href="/settings.html" class="sidebar-link" title="Settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        <span class="sidebar-label">Settings</span>
+      <a href="/notifications.html" class="sidebar-link" title="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="sidebar-label">Notifications</span>
+        <span class="notif-badge" id="notifBadge" style="display:none;">0</span>
       </a>
       <button class="sidebar-link" id="themeToggle" data-theme-toggle>
         <span class="theme-toggle-icon"></span>
@@ -187,12 +192,23 @@
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <div>
-        <h1>Notifications</h1>
-        <p>Tag expirations, insurance, and maintenance reminders across your fleet.</p>
+        <h1>Settings</h1>
+        <p>Manage your profile and account preferences.</p>
       </div>
     </header>
 
-    <div id="notifBody"></div>
+    <div class="settings-card">
+      <h3>Profile</h3>
+      <p class="sub">This name shows in the sidebar instead of your email.</p>
+      <form id="profileForm">
+        <div class="field"><label>Name</label><input type="text" id="f_name" placeholder="Your name" maxlength="100"></div>
+        <div class="field"><label>Email</label><input type="email" id="f_email" disabled></div>
+        <div class="settings-actions">
+          <button type="submit" class="btn btn-primary" id="profileSaveBtn">Save changes</button>
+          <span class="settings-status" id="profileStatus"></span>
+        </div>
+      </form>
+    </div>
   </div>
   </div>
 </div>
@@ -210,11 +226,6 @@
       throw err;
     }
     return data;
-  }
-
-  function escapeHtml(str){
-    if(str===undefined || str===null) return '';
-    return String(str).replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
   }
 
   document.getElementById('logoutBtn').addEventListener('click', async ()=>{
@@ -263,41 +274,40 @@
     return user && (user.subscriptionStatus === 'active' || user.subscriptionStatus === 'trialing');
   }
 
-  function renderAlerts(alerts){
-    const body = document.getElementById('notifBody');
-    if(!alerts || alerts.length === 0){
-      body.innerHTML = '<div class="empty-note">You\'re all caught up — no upcoming tag, insurance, or maintenance items.</div>';
-      return;
-    }
-    const overdue = alerts.filter(a => a.severity === 'overdue');
-    const soon = alerts.filter(a => a.severity === 'soon');
-
-    function cardsHtml(list){
-      return list.map(a => `
-        <div class="notif-card" data-vehicle="${escapeHtml(a.vehicleId)}">
-          <div>
-            <div class="notif-title">${escapeHtml(a.title)}</div>
-            <div class="notif-detail">${escapeHtml(a.detail)}</div>
-          </div>
-          <span class="notif-page-badge ${a.severity}">${a.severity === 'overdue' ? 'Overdue' : 'Due soon'}</span>
-        </div>
-      `).join('');
-    }
-
-    let html = '';
-    if(overdue.length){
-      html += `<div class="notif-section-label">Overdue (${overdue.length})</div>${cardsHtml(overdue)}`;
-    }
-    if(soon.length){
-      html += `<div class="notif-section-label">Due soon (${soon.length})</div>${cardsHtml(soon)}`;
-    }
-    body.innerHTML = html;
-    body.querySelectorAll('.notif-card').forEach(card=>{
-      card.addEventListener('click', ()=>{
-        window.location.href = `/app.html?vehicle=${encodeURIComponent(card.getAttribute('data-vehicle'))}`;
-      });
-    });
+  function applyUserToSidebar(user){
+    const nameEl = document.getElementById('userName');
+    nameEl.textContent = user.name || '';
+    nameEl.style.display = user.name ? 'block' : 'none';
+    document.getElementById('userEmail').textContent = user.email;
+    document.getElementById('planBadge').textContent = (user.plan || 'plan').toUpperCase();
   }
+
+  const profileForm = document.getElementById('profileForm');
+  const profileSaveBtn = document.getElementById('profileSaveBtn');
+  const profileStatus = document.getElementById('profileStatus');
+
+  profileForm.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    profileStatus.textContent = '';
+    profileStatus.className = 'settings-status';
+    profileSaveBtn.disabled = true;
+    profileSaveBtn.textContent = 'Saving…';
+    try{
+      const { user } = await api('/api/auth/profile', {
+        method: 'PUT',
+        body: JSON.stringify({ name: document.getElementById('f_name').value }),
+      });
+      applyUserToSidebar(user);
+      profileStatus.textContent = 'Saved.';
+      profileStatus.className = 'settings-status ok';
+    }catch(err){
+      profileStatus.textContent = err.message;
+      profileStatus.className = 'settings-status err';
+    }finally{
+      profileSaveBtn.disabled = false;
+      profileSaveBtn.textContent = 'Save changes';
+    }
+  });
 
   async function init(){
     let user;
@@ -311,18 +321,9 @@
       window.location.href = '/pricing.html';
       return;
     }
-    const userNameEl = document.getElementById('userName');
-    userNameEl.textContent = user.name || '';
-    userNameEl.style.display = user.name ? 'block' : 'none';
-    document.getElementById('userEmail').textContent = user.email;
-    document.getElementById('planBadge').textContent = (user.plan || 'plan').toUpperCase();
-
-    try{
-      const { alerts } = await api('/api/notifications');
-      renderAlerts(alerts);
-    }catch(e){
-      renderAlerts([]);
-    }
+    applyUserToSidebar(user);
+    document.getElementById('f_name').value = user.name || '';
+    document.getElementById('f_email').value = user.email;
     if(window.FPNotif) window.FPNotif.refreshBadge();
   }
 

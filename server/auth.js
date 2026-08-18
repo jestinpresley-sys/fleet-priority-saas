@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { getUserByEmail, getUserById, createUser } = require('./db');
+const { getUserByEmail, getUserById, createUser, updateUser } = require('./db');
 
 const COOKIE_NAME = 'fp_session';
 
@@ -46,6 +46,7 @@ function publicUser(user) {
   return {
     id: user.id,
     email: user.email,
+    name: user.name || '',
     plan: user.plan || null,
     subscriptionStatus: user.subscriptionStatus || 'inactive',
     hasBillingAccount: !!user.stripeCustomerId,
@@ -89,6 +90,19 @@ router.post('/logout', (req, res) => {
 
 router.get('/me', requireAuth, (req, res) => {
   res.json({ user: publicUser(req.user) });
+});
+
+router.put('/profile', requireAuth, (req, res) => {
+  const { name } = req.body || {};
+  if (name !== undefined && typeof name !== 'string') {
+    return res.status(400).json({ error: 'Name must be text.' });
+  }
+  const trimmed = (name || '').trim();
+  if (trimmed.length > 100) {
+    return res.status(400).json({ error: 'Name must be 100 characters or fewer.' });
+  }
+  const updated = updateUser(req.user.id, { name: trimmed });
+  res.json({ user: publicUser(updated) });
 });
 
 module.exports = { router, requireAuth, requireActiveSub, publicUser };
