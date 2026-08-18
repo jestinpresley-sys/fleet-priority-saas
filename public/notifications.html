@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Notifications — Fleet Priority</title>
-<script>(function(){var t=localStorage.getItem('fp_theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark');document.documentElement.setAttribute('data-theme',t);if(localStorage.getItem('fp_sidebar')==='collapsed')document.documentElement.setAttribute('data-sidebar','collapsed');})();</script>
+<script>(function(){var m=localStorage.getItem('fp_theme');var t=(m==='light'||m==='dark')?m:((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);if(localStorage.getItem('fp_sidebar')==='collapsed')document.documentElement.setAttribute('data-sidebar','collapsed');})();</script>
 <style>
   :root{
     --bg:#0f1420;
