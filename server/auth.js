@@ -1,13 +1,21 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const {
   getUserByEmail, getUserById, createUser, updateUser,
   createSession, getSession, listSessionsForUser, touchSession,
   deleteSession, deleteSessionsForUserExcept,
 } = require('./db');
+const { sendPasswordResetEmail } = require('./mailer');
 
 const COOKIE_NAME = 'fp_session';
+const APP_URL = process.env.APP_URL || 'http://localhost:3000';
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function hashResetToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
 
 function jwtSecret() {
   return process.env.JWT_SECRET || 'insecure-dev-secret-change-me';
@@ -202,6 +210,55 @@ router.delete('/sessions/:id', requireAuth, (req, res) => {
   }
   deleteSession(req.params.id);
   res.json({ ok: true });
+});
+
+router.post('/forgot-password', async (req, res) => {
+  const email = String((req.body || {}).email || '').trim().toLowerCase();
+  const user = email ? getUserByEmail(email) : null;
+  // Always respond the same way whether or not the email exists — otherwise
+  // this endpoint becomes a way to check who has an account.
+  if (user) {
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    updateUser(user.id, {
+      resetTokenHash: hashResetToken(rawToken),
+      resetTokenExpiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS).toISOString(),
+    });
+    const resetUrl = `${APP_URL}/reset-password.html?email=${encodeURIComponent(user.email)}&token=${rawToken}`;
+    sendPasswordResetEmail(user.email, resetUrl).catch((err) => {
+      console.error('sendPasswordResetEmail failed:', err.message);
+    });
+  }
+  res.json({ ok: true });
+});
+
+router.post('/reset-password', async (req, res) => {
+  const { email, token, newPassword } = req.body || {};
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const user = normalizedEmail ? getUserByEmail(normalizedEmail) : null;
+  const genericError = { error: 'This reset link is invalid or has expired.' };
+  if (!user || !user.resetTokenHash || !token) {
+    return res.status(400).json(genericError);
+  }
+  const expiresAt = user.resetTokenExpiresAt ? new Date(user.resetTokenExpiresAt).getTime() : 0;
+  if (!expiresAt || Date.now() > expiresAt) {
+    return res.status(400).json(genericError);
+  }
+  const providedHash = hashResetToken(String(token));
+  const matches = providedHash.length === user.resetTokenHash.length
+    && crypto.timingSafeEqual(Buffer.from(providedHash), Buffer.from(user.resetTokenHash));
+  if (!matches) {
+    return res.status(400).json(genericError);
+  }
+  if (!newPassword || String(newPassword).length < 8) {
+    return res.status(400).json({ error: 'New password must be at least 8 characters.' });
+  }
+  const passwordHash = await bcrypt.hash(String(newPassword), 10);
+  updateUser(user.id, { passwordHash, resetTokenHash: null, resetTokenExpiresAt: null });
+  // A password reset means the account may have been at risk — sign out
+  // everywhere, including whatever session (if any) is making this request.
+  deleteSessionsForUserExcept(user.id, null);
+  startSession(res, user, req);
+  res.json({ user: publicUser(user) });
 });
 
 module.exports = { router, requireAuth, requireActiveSub, publicUser };

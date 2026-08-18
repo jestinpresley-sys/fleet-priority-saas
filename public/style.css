@@ -88,6 +88,11 @@ a:hover{text-decoration:underline;}
   border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px;display:none;
 }
 .error-box.show{display:block;}
+.success-box{
+  background:rgba(62,207,142,0.1);border:1px solid rgba(62,207,142,0.35);color:var(--green);
+  border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px;display:none;
+}
+.success-box.show{display:block;}
 .hint{margin-top:16px;text-align:center;font-size:13px;color:var(--text-dim);}
 
 /* Pricing */
