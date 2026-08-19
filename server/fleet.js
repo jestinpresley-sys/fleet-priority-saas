@@ -90,6 +90,8 @@ router.delete('/:id', (req, res) => {
   }
   db.listMaintenanceForVehicle(req.user.id, req.params.id).forEach((r) => removeUploadedFile(r.receiptPath));
   db.deleteMaintenanceForVehicle(req.user.id, req.params.id);
+  db.listInspectionsForVehicle(req.user.id, req.params.id).forEach((i) => i.slots.forEach((s) => removeUploadedFile(s.photoPath)));
+  db.deleteInspectionsForVehicle(req.user.id, req.params.id);
   res.json({ ok: true });
 });
 

@@ -19,7 +19,7 @@ const DB_FILE = path.join(DATA_DIR, 'db.json');
 function ensureDB() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DB_FILE)) {
-    fs.writeFileSync(DB_FILE, JSON.stringify({ users: [], vehicles: [], maintenance: [], sessions: [] }, null, 2));
+    fs.writeFileSync(DB_FILE, JSON.stringify({ users: [], vehicles: [], maintenance: [], sessions: [], inspections: [] }, null, 2));
   }
 }
 ensureDB();
@@ -42,6 +42,7 @@ function db() {
     // Defensive: older db.json files predate the maintenance log / sessions features.
     if (!Array.isArray(cache.maintenance)) cache.maintenance = [];
     if (!Array.isArray(cache.sessions)) cache.sessions = [];
+    if (!Array.isArray(cache.inspections)) cache.inspections = [];
   }
   return cache;
 }
@@ -178,6 +179,46 @@ function deleteMaintenanceForVehicle(userId, vehicleId) {
   persist();
 }
 
+/* ---------------- Inspections ---------------- */
+
+function listInspectionsForVehicle(userId, vehicleId) {
+  return db().inspections.filter((i) => i.userId === userId && i.vehicleId === vehicleId);
+}
+function getInspection(userId, id) {
+  return db().inspections.find((i) => i.id === id && i.userId === userId) || null;
+}
+function createInspection(userId, data) {
+  const inspection = {
+    id: crypto.randomUUID(),
+    userId,
+    ...data,
+    createdAt: new Date().toISOString(),
+  };
+  db().inspections.push(inspection);
+  persist();
+  return inspection;
+}
+function updateInspection(userId, id, patch) {
+  const records = db().inspections;
+  const idx = records.findIndex((i) => i.id === id && i.userId === userId);
+  if (idx === -1) return null;
+  records[idx] = { ...records[idx], ...patch };
+  persist();
+  return records[idx];
+}
+function deleteInspection(userId, id) {
+  const data = db();
+  const before = data.inspections.length;
+  data.inspections = data.inspections.filter((i) => !(i.id === id && i.userId === userId));
+  persist();
+  return data.inspections.length < before;
+}
+function deleteInspectionsForVehicle(userId, vehicleId) {
+  const data = db();
+  data.inspections = data.inspections.filter((i) => !(i.vehicleId === vehicleId && i.userId === userId));
+  persist();
+}
+
 /* ---------------- Sessions (one per login, backs "linked devices") ---------------- */
 
 function createSession(userId, userAgent) {
@@ -241,6 +282,12 @@ module.exports = {
   updateMaintenance,
   deleteMaintenance,
   deleteMaintenanceForVehicle,
+  listInspectionsForVehicle,
+  getInspection,
+  createInspection,
+  updateInspection,
+  deleteInspection,
+  deleteInspectionsForVehicle,
   createSession,
   getSession,
   listSessionsForUser,

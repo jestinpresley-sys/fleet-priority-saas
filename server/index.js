@@ -8,6 +8,7 @@ const { router: authRouter } = require('./auth');
 const { router: billingRouter, webhookHandler } = require('./billing');
 const fleetRouter = require('./fleet');
 const { router: maintenanceRouter } = require('./maintenance');
+const { router: inspectionsRouter } = require('./inspections');
 const { router: notificationsRouter } = require('./notifications');
 const { startReminderScheduler } = require('./reminders');
 
@@ -42,6 +43,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/billing', billingRouter);
 app.use('/api/vehicles', fleetRouter);
 app.use('/api/maintenance', maintenanceRouter);
+app.use('/api/inspections', inspectionsRouter);
 app.use('/api/notifications', notificationsRouter);
 
 app.get('/', (req, res) => res.redirect('/login.html'));

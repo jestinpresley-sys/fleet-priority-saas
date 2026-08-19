@@ -351,6 +351,44 @@
   .modal-actions{display:flex;justify-content:space-between;gap:10px;margin-top:22px;padding-top:16px;border-top:1px solid var(--border);}
   .modal-actions .right{display:flex;gap:8px;}
 
+  /* ---------------- Inspections ---------------- */
+  .insp-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+  .insp-row{background:var(--panel-2);border:1px solid var(--border);border-radius:7px;overflow:hidden;}
+  .insp-row-summary{display:flex;align-items:center;gap:10px;padding:8px 10px;font-size:12.5px;cursor:pointer;}
+  .insp-row-date{color:var(--text-dim);min-width:80px;}
+  .insp-row-type{font-weight:600;flex:1;}
+  .insp-row-odo{color:var(--text-dim);min-width:70px;text-align:right;}
+  .insp-row-flag{font-weight:600;min-width:90px;text-align:right;}
+  .insp-del{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:2px 4px;}
+  .insp-del:hover{color:var(--red);}
+  .insp-row-detail{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:10px;border-top:1px solid var(--border);}
+  .insp-detail-photo img,.insp-photo-empty{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;background:var(--panel);}
+  .insp-photo-empty{display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:11px;text-align:center;border:1px dashed var(--border);box-sizing:border-box;}
+  .insp-detail-meta{font-size:11.5px;margin-top:5px;}
+  .insp-detail-meta strong{display:block;font-size:12px;}
+  .insp-sev-badge{display:inline-block;font-weight:700;text-transform:capitalize;font-size:11px;margin-top:2px;}
+  .insp-detail-meta p{margin:4px 0 0;color:var(--text-dim);}
+
+  .insp-modal{max-width:760px;}
+  .insp-top-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px;}
+  @media (max-width:640px){ .insp-top-fields{grid-template-columns:1fr;} }
+  .insp-slots{display:flex;flex-direction:column;gap:14px;}
+  .insp-slot{background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:12px;}
+  .insp-slot-header{font-weight:700;font-size:13px;margin-bottom:10px;}
+  .insp-slot-photos{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .insp-photo-caption{display:block;font-size:10.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;}
+  .insp-photo-box{width:100%;aspect-ratio:4/3;border-radius:6px;background:var(--panel);border:1px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center;}
+  .insp-photo-box img{width:100%;height:100%;object-fit:cover;}
+  .insp-photo-box .insp-photo-empty{border:none;aspect-ratio:auto;height:100%;}
+  .insp-capture-btn{margin-top:6px;width:100%;}
+  .insp-slot-fields{display:grid;grid-template-columns:1fr 130px;gap:8px;margin-top:10px;}
+  @media (max-width:640px){ .insp-slot-fields{grid-template-columns:1fr;} }
+  .insp-note-input,.insp-sev-select{
+    width:100%;background:var(--panel-2);border:1px solid var(--border);border-radius:7px;
+    padding:9px 11px;color:var(--text);font-size:13.5px;font-family:inherit;outline:none;box-sizing:border-box;
+  }
+  .insp-note-input:focus,.insp-sev-select:focus{border-color:var(--accent);}
+
   footer{margin-top:30px;text-align:center;color:var(--text-dim);font-size:12px;}
 
   /* Assistant chat bubble */
@@ -651,6 +689,13 @@
           <div id="vehicleGasTrendChart"></div>
         </div>
 
+        <div class="section-label">Inspections</div>
+        <div class="field full">
+          <p class="maint-note" id="inspectionsEmptyNote" style="display:none;">Save the vehicle first, then come back here to run an inspection.</p>
+          <div class="insp-list" id="inspectionsList"></div>
+          <button type="button" class="btn btn-secondary btn-sm" id="startInspectionBtn" style="display:none;">+ Start Inspection</button>
+        </div>
+
         <div class="section-label">Mechanic</div>
         <div class="field"><label>Preferred Mechanic / Shop</label><input type="text" id="f_mechName" placeholder="Joe's Auto Care"></div>
         <div class="field"><label>Mechanic Phone</label><input type="text" id="f_mechPhone" placeholder="(555) 123-4567"></div>
@@ -733,6 +778,35 @@
     <div class="welcome-actions">
       <button type="button" class="btn btn-primary" id="welcomeStartBtn">Show me around</button>
       <button type="button" class="btn btn-secondary" id="welcomeSkipBtn">Skip, I'll explore on my own</button>
+    </div>
+  </div>
+</div>
+
+<!-- Inspection modal (opened on top of the vehicle modal) -->
+<div class="overlay" id="inspOverlay">
+  <div class="modal insp-modal">
+    <div class="modal-header">
+      <h2 id="inspModalTitle">New Inspection</h2>
+      <button type="button" class="close-x" id="closeInspModal">✕</button>
+    </div>
+    <div class="insp-top-fields">
+      <div class="field"><label>Type</label>
+        <select id="i_type">
+          <option>Check-out</option>
+          <option>Check-in</option>
+          <option>Routine</option>
+        </select>
+      </div>
+      <div class="field"><label>Date</label><input type="date" id="i_date"></div>
+      <div class="field"><label>Odometer</label><input type="number" id="i_odometer" min="0" placeholder="Optional"></div>
+    </div>
+    <div id="inspSlotsWrap" class="insp-slots"></div>
+    <div class="modal-actions">
+      <div></div>
+      <div class="right">
+        <button type="button" class="btn btn-secondary" id="cancelInspBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveInspBtn">Save Inspection</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1353,6 +1427,7 @@
     document.getElementById('insuranceDocFieldWrap').style.display = pro ? '' : 'none';
     document.getElementById('proUpgradeNote').style.display = pro ? 'none' : 'block';
     refreshMaintenanceUI(id);
+    refreshInspectionsUI(id);
     updatePayoffPreview();
     overlay.classList.add('open');
   }
@@ -1504,6 +1579,210 @@
       alert(err.message);
     }
   }
+
+  /* ---------------- Inspections (inside the edit modal) ---------------- */
+  const inspectionsEmptyNote = document.getElementById('inspectionsEmptyNote');
+  const inspectionsListEl = document.getElementById('inspectionsList');
+  const startInspectionBtn = document.getElementById('startInspectionBtn');
+  const inspOverlay = document.getElementById('inspOverlay');
+  const inspSlotsWrap = document.getElementById('inspSlotsWrap');
+  const saveInspBtn = document.getElementById('saveInspBtn');
+  let inspRecords = [];
+  let inspSlotsMeta = [];
+  let pendingSlotFiles = {};
+
+  function inspPhotoUrl(recordId, slotKey, stamp){
+    return `/api/inspections/${recordId}/photo/${slotKey}?v=${encodeURIComponent(stamp || '')}`;
+  }
+  function inspSeverityColor(sev){
+    return sev === 'major' ? 'var(--red)' : sev === 'minor' ? 'var(--amber)' : 'var(--text-dim)';
+  }
+  function inspSlotLabel(key){
+    const s = inspSlotsMeta.find(x=>x.key===key);
+    return s ? s.label : key;
+  }
+
+  async function refreshInspectionsUI(vehicleId){
+    if(!vehicleId){
+      inspectionsEmptyNote.style.display = 'block';
+      inspectionsListEl.innerHTML = '';
+      startInspectionBtn.style.display = 'none';
+      inspRecords = [];
+      return;
+    }
+    inspectionsEmptyNote.style.display = 'none';
+    startInspectionBtn.style.display = 'inline-block';
+    inspectionsListEl.innerHTML = '<p class="maint-note">Loading…</p>';
+    try{
+      const { records, slots } = await api(`/api/inspections/vehicle/${vehicleId}`);
+      inspRecords = records;
+      inspSlotsMeta = slots;
+      renderInspectionsList(records);
+    }catch(err){
+      inspectionsListEl.innerHTML = '<p class="maint-note">Could not load inspections.</p>';
+    }
+  }
+
+  function renderInspectionsList(records){
+    if(!records || records.length === 0){
+      inspectionsListEl.innerHTML = '<p class="maint-note">No inspections logged yet.</p>';
+      return;
+    }
+    inspectionsListEl.innerHTML = records.map(r=>{
+      const flagged = r.slots.filter(s=>s.severity!=='none').length;
+      return `
+        <div class="insp-row">
+          <div class="insp-row-summary" data-action="toggle" data-id="${r.id}">
+            <span class="insp-row-date">${escapeHtml(r.date || '—')}</span>
+            <span class="insp-row-type">${escapeHtml(r.type || 'Routine')}</span>
+            <span class="insp-row-odo">${r.odometer ? Number(r.odometer).toLocaleString()+' mi' : ''}</span>
+            <span class="insp-row-flag" style="color:${flagged ? 'var(--amber)' : 'var(--text-dim)'};">${flagged ? flagged+' flagged' : 'No issues noted'}</span>
+            <button type="button" class="insp-del" data-id="${r.id}" title="Delete inspection">✕</button>
+          </div>
+          <div class="insp-row-detail" id="inspDetail-${r.id}" style="display:none;">
+            ${r.slots.map(s=>`
+              <div class="insp-detail-slot">
+                <div class="insp-detail-photo">
+                  ${s.photoPath ? `<img src="${inspPhotoUrl(r.id, s.key, r.createdAt)}" alt="${escapeHtml(inspSlotLabel(s.key))}">` : '<div class="insp-photo-empty">No photo</div>'}
+                </div>
+                <div class="insp-detail-meta">
+                  <strong>${escapeHtml(inspSlotLabel(s.key))}</strong>
+                  <span class="insp-sev-badge" style="color:${inspSeverityColor(s.severity)};">${s.severity==='none' ? 'OK' : s.severity}</span>
+                  ${s.note ? `<p>${escapeHtml(s.note)}</p>` : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+    inspectionsListEl.querySelectorAll('[data-action="toggle"]').forEach(row=>{
+      row.addEventListener('click', (e)=>{
+        if(e.target.closest('.insp-del')) return;
+        const detail = document.getElementById(`inspDetail-${row.getAttribute('data-id')}`);
+        detail.style.display = detail.style.display === 'none' ? 'grid' : 'none';
+      });
+    });
+    inspectionsListEl.querySelectorAll('.insp-del').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        deleteInspectionRecord(btn.getAttribute('data-id'));
+      });
+    });
+  }
+
+  async function deleteInspectionRecord(id){
+    if(!confirm('Delete this inspection? This cannot be undone.')) return;
+    try{
+      await api(`/api/inspections/${id}`, { method:'DELETE' });
+      refreshInspectionsUI(editingId);
+    }catch(err){
+      alert(err.message);
+    }
+  }
+
+  function openInspectionModal(){
+    if(!editingId) return;
+    document.getElementById('i_type').value = 'Routine';
+    document.getElementById('i_date').value = new Date().toISOString().slice(0,10);
+    document.getElementById('i_odometer').value = document.getElementById('f_mileage').value || '';
+    pendingSlotFiles = {};
+    const prev = inspRecords[0] || null;
+    inspSlotsWrap.innerHTML = inspSlotsMeta.map(slot=>{
+      const prevSlot = prev && prev.slots.find(s=>s.key===slot.key);
+      const prevPhoto = prevSlot && prevSlot.photoPath ? inspPhotoUrl(prev.id, slot.key, prev.createdAt) : null;
+      return `
+        <div class="insp-slot" data-key="${slot.key}">
+          <div class="insp-slot-header">${escapeHtml(slot.label)}</div>
+          <div class="insp-slot-photos">
+            <div class="insp-photo-col">
+              <span class="insp-photo-caption">Before (last inspection)</span>
+              <div class="insp-photo-box">${prevPhoto ? `<img src="${prevPhoto}" alt="Previous ${escapeHtml(slot.label)}">` : '<span class="insp-photo-empty">No prior photo</span>'}</div>
+            </div>
+            <div class="insp-photo-col">
+              <span class="insp-photo-caption">Now</span>
+              <div class="insp-photo-box" id="inspNowBox-${slot.key}"><span class="insp-photo-empty">No photo yet</span></div>
+              <input type="file" accept="image/*" capture="environment" class="insp-capture-input" data-key="${slot.key}" style="display:none;">
+              <button type="button" class="btn btn-secondary btn-sm insp-capture-btn" data-key="${slot.key}">📷 Take Photo</button>
+            </div>
+          </div>
+          <div class="insp-slot-fields">
+            <input type="text" class="insp-note-input" data-key="${slot.key}" placeholder="Note (optional)" maxlength="500">
+            <select class="insp-sev-select" data-key="${slot.key}">
+              <option value="none">No damage</option>
+              <option value="minor">Minor</option>
+              <option value="major">Major</option>
+            </select>
+          </div>
+        </div>
+      `;
+    }).join('');
+    inspSlotsWrap.querySelectorAll('.insp-capture-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        inspSlotsWrap.querySelector(`.insp-capture-input[data-key="${btn.getAttribute('data-key')}"]`).click();
+      });
+    });
+    inspSlotsWrap.querySelectorAll('.insp-capture-input').forEach(input=>{
+      input.addEventListener('change', ()=>{
+        const key = input.getAttribute('data-key');
+        const file = input.files[0];
+        if(!file) return;
+        pendingSlotFiles[key] = file;
+        document.getElementById(`inspNowBox-${key}`).innerHTML = `<img src="${URL.createObjectURL(file)}" alt="Captured photo">`;
+      });
+    });
+    inspOverlay.classList.add('open');
+  }
+  function closeInspModal(){
+    inspOverlay.classList.remove('open');
+  }
+  startInspectionBtn.addEventListener('click', openInspectionModal);
+  document.getElementById('closeInspModal').addEventListener('click', closeInspModal);
+  document.getElementById('cancelInspBtn').addEventListener('click', closeInspModal);
+  inspOverlay.addEventListener('click', (e)=>{ if(e.target === inspOverlay) closeInspModal(); });
+
+  saveInspBtn.addEventListener('click', async ()=>{
+    if(!editingId) return;
+    const date = document.getElementById('i_date').value;
+    if(!date){
+      alert('Pick a date for this inspection.');
+      return;
+    }
+    const type = document.getElementById('i_type').value;
+    const odometer = document.getElementById('i_odometer').value;
+    const slots = inspSlotsMeta.map(slot=>({
+      key: slot.key,
+      note: inspSlotsWrap.querySelector(`.insp-note-input[data-key="${slot.key}"]`).value.trim(),
+      severity: inspSlotsWrap.querySelector(`.insp-sev-select[data-key="${slot.key}"]`).value,
+    }));
+    saveInspBtn.disabled = true;
+    saveInspBtn.textContent = 'Saving…';
+    try{
+      const { record } = await api('/api/inspections', { method:'POST', body: JSON.stringify({ vehicleId: editingId, type, date, odometer, slots }) });
+      let current = record;
+      const keysWithFiles = Object.keys(pendingSlotFiles);
+      for(const key of keysWithFiles){
+        saveInspBtn.textContent = 'Saving photos…';
+        try{
+          const fd = new FormData();
+          fd.append('photo', pendingSlotFiles[key]);
+          const res = await fetch(`/api/inspections/${current.id}/photo/${key}`, { method:'POST', body: fd });
+          const data = await res.json().catch(()=>({}));
+          if(res.ok && data.record) current = data.record;
+          else if(!res.ok) alert((data && data.error) || `Inspection saved, but the ${inspSlotLabel(key)} photo could not be saved.`);
+        }catch(photoErr){
+          alert(`Inspection saved, but the ${inspSlotLabel(key)} photo could not be saved: ${photoErr.message}`);
+        }
+      }
+      closeInspModal();
+      refreshInspectionsUI(editingId);
+    }catch(err){
+      alert(err.message);
+    }finally{
+      saveInspBtn.disabled = false;
+      saveInspBtn.textContent = 'Save Inspection';
+    }
+  });
 
   document.getElementById('addBtn').addEventListener('click', ()=>openModal(null));
   document.getElementById('emptyAddBtn').addEventListener('click', ()=>openModal(null));
